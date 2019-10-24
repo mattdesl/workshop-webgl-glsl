@@ -37,7 +37,3 @@ This repo contains the source code for my Frontend Masters *Advanced Creative Co
 - ✨ More Resources
 
   - [Further Reading](./guides/further-reading.md#running-locally)
-
-# License
-
-Currently only the [guides](./guides) (Markdown Files) are licensed under MIT.
