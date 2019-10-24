@@ -20,7 +20,7 @@ This repo contains the source code for my Frontend Masters *Advanced Creative Co
 
 - 📖 Interactive Book
 
-  - [WebGL & GLSL — A Primer]()
+  - [WebGL & GLSL — A Primer](https://mattdesl.github.io/workshop-webgl-glsl/)
 
 - 🔥 Online Demos
 
