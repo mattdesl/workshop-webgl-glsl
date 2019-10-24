@@ -73,7 +73,7 @@
     "last 1 Chrome version"
   ],
   "scripts": {
-    "build": "parcel build src/book/index.html --out-dir=docs && cp docs/index.html docs/200.html",
+    "build": "parcel build src/book/index.html --public-url=./ --out-dir=docs && cp docs/index.html docs/200.html",
     "start": "parcel src/book/index.html"
   },
   "keywords": [],
