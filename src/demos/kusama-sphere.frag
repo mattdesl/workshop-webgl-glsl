@@ -118,7 +118,7 @@ void main () {
   // fragColor.rgb += normalize(vPosition).zzz * 0.1;
   // fragColor.rgb = mix(fragColor.rgb, altColor, rim);
   // fragColor.rgb = mix(fragColor.rgb, altColor, vWorldNormal.y * 0.5 + 0.5);
-  fragColor.rgb = mix(vec3(0.0), fragColor.rgb, len);
+  fragColor.rgb = mix(vec3(1.0), fragColor.rgb, len);
   gl_FragColor = vec4(fragColor, 1.0);
 }
 
