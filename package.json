@@ -73,10 +73,10 @@
     "last 1 Chrome version"
   ],
   "scripts": {
-    "build": "parcel build src/book/index.html --out-dir=public && cp public/index.html public/200.html",
+    "build": "parcel build src/book/index.html --out-dir=docs && cp docs/index.html docs/200.html",
     "start": "parcel src/book/index.html",
     "deploy": "npm run build && npm run deploy:upload",
-    "deploy:upload": "surge -p public -d workshop-webgl-glsl.surge.sh"
+    "deploy:upload": "surge -p docs -d workshop-webgl-glsl.surge.sh"
   },
   "keywords": [],
   "repository": {
