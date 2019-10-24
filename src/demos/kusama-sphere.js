@@ -149,6 +149,7 @@ const sketch = ({ context }) => {
         pointScale: { value: pointScale },
         randomPoints: { value: randomPoints }
       },
+      side: THREE.DoubleSide,
       vertexShader,
       fragmentShader
     });
