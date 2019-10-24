@@ -12,8 +12,12 @@ uniform vec4 randomPoints[POINT_COUNT];
 uniform float time;
 uniform float timeOffset;
 uniform float pointScale;
+uniform vec3 color;
+uniform vec3 altColor;
 uniform mat4 noiseRotation;
 varying vec4 vNearestPoint;
+varying vec3 vWorldNormal;
+varying vec3 vWorldPosition;
 
 float radial_pattern(vec3 pos)
 {
@@ -74,8 +78,6 @@ vec3 cartesianToPolar (vec3 pos) {
 }
 
 void main () {
-  vec3 color = normalize(vPosition) * 0.5 + 0.5;
-
   vec3 pos = normalize(vPosition.xyz);
 
   float minDist = 10000.0;
@@ -91,20 +93,33 @@ void main () {
     }
   }
 
-  vec3 noisePos = normalize(noiseRotation * vec4(normalize(vPosition), 1.0)).xyz;
-  vec2 v = worley3D(vec3(curPoint * 1.0 + time + timeOffset), 2.0, false);
-  // vec2 v = worley3D(vec3(noisePos * 3.0 + time), 1.0, false);
+  // vec3 noisePos = normalize(noiseRotation * vec4(normalize(vPosition), 1.0)).xyz;
+  // vec2 v = worley3D(vec3(curPoint * 1.0 + time + timeOffset), 2.0, false);
+  // vec2 v = worley3D(vec3(vPosition * 1.5), 1.0, false);
   // float len = aastep(0.25, v.x);
-  // float len = aastep(pointScale * size, minDist);
+  float len = aastep(pointScale, minDist);
 
   // float len = noise(vec4(curPoint.xyz, time));
-  float len = aastep(v.x, minDist);
+  // float len = aastep(v.x, minDist);
   // float len = aastep(pointScale * size + v.x, minDist);
   // float len = aastep(pointScale * size + 0.1 * v.x, minDist);
 
-  color = vec3(len);
+  vec3 worldNormal = vWorldNormal;
 
-  gl_FragColor = vec4(color, 1.0);
+	// //get light an view directions
+	vec3 V = normalize( cameraPosition - vWorldPosition );
+
+	// //rim lighting
+	float rim = 1.0 - max(dot(V, worldNormal), 0.0);
+	rim = smoothstep(-1.0, 1.0, rim);
+
+  vec3 fragColor = color;
+  // fragColor.rgb += (normalize(vPosition) * 0.5 + 0.5).xxx * 0.2;
+  // fragColor.rgb += normalize(vPosition).zzz * 0.1;
+  // fragColor.rgb = mix(fragColor.rgb, altColor, rim);
+  // fragColor.rgb = mix(fragColor.rgb, altColor, vWorldNormal.y * 0.5 + 0.5);
+  fragColor.rgb = mix(vec3(0.0), fragColor.rgb, len);
+  gl_FragColor = vec4(fragColor, 1.0);
 }
 
 // var u = value() * Math.PI * 2;

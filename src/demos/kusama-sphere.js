@@ -4,6 +4,8 @@ global.THREE = require("three");
 // Include any additional ThreeJS examples below
 require("three/examples/js/controls/OrbitControls");
 
+const risoColors = require("riso-colors").map(h => h.hex);
+const paperColors = require("paper-colors").map(h => h.hex);
 const Poisson = require("poisson-disk-sampling");
 const { linspace } = require("canvas-sketch-util/math");
 const Random = require("canvas-sketch-util/random");
@@ -13,6 +15,8 @@ const canvasSketch = require("canvas-sketch");
 const pack = require("./pack-sphere");
 
 const settings = {
+  dimensions: [2048, 2048],
+  // scaleToView: true,
   // Make the loop animated
   animate: true,
   // Get a WebGL canvas rather than 2D
@@ -28,7 +32,10 @@ const sketch = ({ context }) => {
   });
 
   // WebGL background color
-  renderer.setClearColor("#000", 1);
+
+  const palette = Random.shuffle(Random.shuffle(risoColors).slice(0, 2));
+  renderer.setClearColor(palette[0], 1);
+  // renderer.setClearColor(palette.shift(), 1);
 
   // Setup a camera
   const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
@@ -42,20 +49,29 @@ const sketch = ({ context }) => {
   const scene = new THREE.Scene();
 
   // Setup a geometry
-  const geometry = new THREE.IcosahedronGeometry(1, 3);
-  // const geometry = new THREE.SphereGeometry(1, 64, 32);
+  // const geometry = new THREE.IcosahedronGeometry(1, 3);
+  const geometry = new THREE.SphereGeometry(1, 64, 32);
+
+  // const base = new THREE.IcosahedronGeometry(1, 1);
+  // const base = new THREE.TetrahedronGeometry(1, 1);
+  const base = new THREE.DodecahedronGeometry(1, 0);
+
+  // const icosphere = ;
+  // const icosphere = new THREE.IcosahedronGeometry(1, detail);
 
   const meshes = pack({
     dimensions: 3,
     maxRadius: 0.5,
     minRadius: 0.05,
+    padding: 0.005,
     bounds: 1,
     maxCount: 10
-  }).map(p => {
+  }).map((p, i, list) => {
     const mesh = createMesh();
     mesh.position.fromArray(p.position);
     mesh.scale.multiplyScalar(p.radius);
     mesh.quaternion.fromArray(Random.quaternion());
+    mesh.rotationSpeed = Random.gaussian() * 0.075;
     scene.add(mesh);
     return mesh;
   });
@@ -63,16 +79,26 @@ const sketch = ({ context }) => {
   // draw each frame
   return {
     // Handle resize events here
-    resize({ pixelRatio, viewportWidth, viewportHeight }) {
+    resize({
+      pixelRatio,
+      viewportWidth,
+      viewportHeight,
+      styleWidth,
+      styleHeight
+    }) {
       renderer.setPixelRatio(pixelRatio);
-      renderer.setSize(viewportWidth, viewportHeight);
+      renderer.setSize(viewportWidth, viewportHeight, false);
       camera.aspect = viewportWidth / viewportHeight;
       camera.updateProjectionMatrix();
     },
     // Update & render your scene here
-    render({ time }) {
+    render({ time, deltaTime }) {
       meshes.forEach(mesh => {
         mesh.material.uniforms.time.value = time;
+        mesh.rotateOnWorldAxis(
+          new THREE.Vector3(0, 1, 0),
+          deltaTime * mesh.rotationSpeed
+        );
       });
       controls.update();
       renderer.render(scene, camera);
@@ -85,61 +111,29 @@ const sketch = ({ context }) => {
   };
 
   function createMesh() {
-    const pointsOnSphere = (num = 100, r = 1) => {
-      const points = [];
-      if (num <= 0) return points;
-      let a = 4 * Math.PI * (Math.pow(r, 2) / num);
-      let d = Math.sqrt(a);
-      let mTheta = Math.round(Math.PI / d);
-      let dTheta = Math.PI / mTheta;
-      let dPhi = a / dTheta;
-      if (isNaN(mTheta) || dPhi === 0) return points;
-      for (let m = 0; m < mTheta; m++) {
-        let theta = (Math.PI * (m + 0.5)) / mTheta;
-        let mPhi = Math.round((2 * Math.PI * Math.sin(theta)) / dPhi);
-        // mPhi = Math.max(mPhi, 4);
-        for (let n = 0; n < mPhi; n++) {
-          let phi = (2 * Math.PI * n) / mPhi;
-          let x = r * Math.sin(theta) * Math.cos(phi);
-          let y = r * Math.sin(theta) * Math.sin(phi);
-          let z = r * Math.cos(theta);
-          points.push([x, y, z]);
-        }
-      }
-      return points;
-    };
-
-    const detail = 1;
-    const icosphere = new THREE.IcosahedronGeometry(1, detail);
-
-    const randomPoints = icosphere.vertices.map((vertex, i) => {
+    const randomPoints = base.vertices.map((vertex, i) => {
+      // const quat = new THREE.Quaternion().fromArray(Random.quaternion());
       const { x, y, z } = vertex;
-      return new THREE.Vector4(x, y, z, Random.range(0, 2));
+      //.clone().applyQuaternion(quat);
+      return new THREE.Vector4(x, y, z, Random.range(0.05, 2));
+      // return new THREE.Vector4(x, y, z, 1);
+      // return new THREE.Vector4(x, y, z, Math.min(2, Random.gaussian(0.5, 1)));
     });
 
-    // const randomPoints = pointsOnSphere(icosphere.vertices.length).map(
-    //   point => {
-    //     const [x, y, z] = point;
-    //     return new THREE.Vector4(x, y, z, Random.range(0, 2));
-    //   }
-    // );
+    const pointScale = 0.2;
 
-    // const randomPoints = linspace(Math.sqrt(5) * 50, false)
-    //   .map((t, i) => {
-    //     const phi = Math.acos(t * 2 - 1);
-    //     const goldenRatio = (Math.sqrt(5) + 1) / 2;
-    //     const theta = Math.PI * (Math.sqrt(5) + 1) * 1 * i;
-    //     const x = Math.cos(theta) * Math.sin(phi);
-    //     const y = Math.sin(theta) * Math.sin(phi);
-    //     const z = Math.cos(phi);
-
-    //     // const [x, y, z] = Random.onSphere();
-    //     return new THREE.Vector4(x, y, z, Random.range(1, 1));
-    //   })
-    //   .slice(1);
-
-    const pointScale = 0.1;
-
+    const baseColor = Random.pick(palette);
+    const color = new THREE.Color(baseColor);
+    const altColor = new THREE.Color(
+      Random.pick(palette.filter(p => p !== baseColor))
+    );
+    // const altColor = color
+    //   .clone()
+    //   .offsetHSL(
+    //     (Random.range(-1, 1) * 1) / 360,
+    //     (Random.range(-1, 1) * 10) / 100,
+    //     (Random.range(-1, 1) * 10) / 100
+    //   );
     // Setup a material
     const material = new THREE.ShaderMaterial({
       defines: {
@@ -149,12 +143,8 @@ const sketch = ({ context }) => {
         derivatives: true
       },
       uniforms: {
-        timeOffset: { value: Random.range(-1, 1) },
-        noiseRotation: {
-          value: new THREE.Matrix4().makeRotationFromQuaternion(
-            new THREE.Quaternion().fromArray(Random.quaternion())
-          )
-        },
+        color: { value: color },
+        altColor: { value: altColor },
         time: { value: 0 },
         pointScale: { value: pointScale },
         randomPoints: { value: randomPoints }
