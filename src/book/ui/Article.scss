@@ -1,0 +1,125 @@
+.ArticleContainer {
+  width: 100%;
+  // height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-direction: column;
+  padding: 40px;
+  flex-grow: 1;
+
+  // margin: auto 80px;
+  // max-width: 920px;
+  // margin-top: 35px;
+}
+
+.App.large .ArticleContainer {
+  padding: 20px;
+}
+
+.Article {
+  max-width: 720px;
+}
+
+.Article p {
+}
+
+.ArticleInnerWrapper {
+  // box-sizing: border-box;
+
+  width: 100%;
+  // height: 100%;
+  // box-sizing: border-box;
+  padding: 40px;
+  padding-top: 0;
+  flex-grow: 1;
+
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  flex-direction: column;
+}
+
+.App.large .ArticleInnerWrapper {
+  padding: 20px;
+  padding-top: 0;
+}
+.ArticleDemoContainer {
+  width: 100%;
+  // height: 400px;
+  margin-top: 40px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  flex-direction: column;
+}
+.ArticleTitle {
+  align-self: flex-start;
+}
+.NextPreviousContainer {
+  width: 100%;
+  box-sizing: border-box;
+  // border-top: 1px solid #EAECEE;
+  margin-top: 0px;
+  padding-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+.App.large .NextPreviousContainer {
+  border-top: none;
+}
+.PreviousLink {
+  margin-right: auto;
+}
+
+.NextLink, .PreviousLink {
+  box-sizing: border-box;
+  padding: 10px 20px;
+  background: hsl(0, 0%, 90%);
+  border-radius: 5px;
+  cursor: pointer;
+  color: black;
+  font-size: inherit;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  &:visited, &:active {
+    color: black;
+  }
+  &:hover {
+    background: hsl(0, 0%, 95%);
+    color: black;
+    text-decoration: none;
+  }
+
+  img {
+    width: 24px;
+  }
+}
+.PreviousLink img {
+  margin-right: 10px;
+}
+.NextLink img {
+  margin-left: 10px;
+}
+.NextLink {
+  flex-direction: row-reverse;
+}
+
+.Article.markdown-body {
+  font: inherit;
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.App.large .Article.markdown-body {
+  font-size: 20px;
+}
+
+pre.prism-code {
+  margin-top: 0 !important;
+  margin-bottom: 20px !important;
+}

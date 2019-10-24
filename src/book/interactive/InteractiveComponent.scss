@@ -1,0 +1,244 @@
+.InteractiveComponent {
+  width: 100%;
+  height: 400px;
+  flex-grow: 1;
+  flex-shrink: 0;
+  border-radius: 5px;
+  box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.1);
+  position: relative;
+  border: 1px solid #e0e0e0;
+  box-sizing: border-box;
+
+  // border-radius: 5px;
+  overflow: hidden;
+  display: flex;
+  justify-content: stretch;
+  flex-direction: row;
+  // margin-top: 30px;
+  // margin-bottom: 30px;
+  // min-height: 200px;
+  align-items: stretch;
+
+  max-width: 1080px;
+  &.small {
+    max-width: 720px;
+  }
+  &.medium {
+    max-width: 960px;
+  }
+  &.large {
+    max-width: 1080px;
+  }
+  &.full {
+    max-width: initial;
+    height: 500px;
+  }
+
+  &:fullscreen {
+    width: initial;
+    height: initial;
+    border-radius: 0px;
+  }
+}
+.App.large .InteractiveComponent {
+  &.small {
+    max-width: 960px;
+  }
+  &.medium {
+    max-width: 1080px;
+  }
+  &.large {
+    max-width: 1280px;
+  }
+}
+.InteractiveComponentPanel {
+  height: 100%;
+  flex-basis: 33%;
+
+  flex-shrink: 2;
+  flex-grow: 1;
+
+  display: flex;
+  justify-content: stretch;
+  align-items: stretch;
+  flex-direction: column;
+
+  .InteractiveComponentParams {
+    border-top: 1px solid #e0e0e0;
+    border-left: 0;
+  }
+}
+.InteractiveComponentCanvasContainer {
+  flex-basis: 40%;
+  flex-shrink: 1;
+  // min-height: 200px;
+  min-width: 100px;
+
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  flex-direction: column;
+
+  flex-grow: 1;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.InteractiveComponentPanel {
+  .InteractiveComponentCanvasContainer {
+    flex-basis: 90%;
+  }
+  .InteractiveComponentParams {
+    flex-basis: 10%;
+  }
+}
+.THREEDOMTextLabel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  text-align: center;
+  user-select: none;
+  pointer-events: none;
+  vertical-align: middle;
+  top: 0;
+  left: 0;
+}
+.InteractiveComponentCanvasContainer.has-runtime-error::after {
+  border-radius: 0px;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  background: rgba(150, 0, 0, 0.85);
+  top: 0;
+  content: ' ';
+  display: block;
+  z-index: 5;
+  left: 0;
+  pointer-events: none;
+}
+.InteractiveComponentCanvasErrorHeader {
+  font-weight: 300;
+  font-size: 12px;
+  line-height: 2;
+  color: pink;
+  margin-bottom: 5px;
+}
+.App.large .InteractiveComponentCanvasErrorHeader {
+  font-size: 16px;
+}
+.InteractiveComponentCanvasError {
+  position: relative;
+  flex-direction: column;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  padding: 20px;
+  color: white;
+  z-index: 6;
+  font-size: 12px;
+  box-sizing: border-box;
+  line-height: 1.5;
+}
+.App.large .InteractiveComponentCanvasError {
+  font-size: 16px;
+}
+.InteractiveComponentCanvas {
+  user-select: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.InteractiveComponentParams {
+  // min-height: 200px;
+  padding: 10px;
+  box-sizing: border-box;
+  flex-basis: 30%;
+  flex-shrink: 2;
+  flex-grow: 0;
+  // height: 100%;
+  width: 100%;
+  background: #f1f1f1;
+  
+  border-left: 1px solid #e0e0e0;
+  
+}
+.InteractiveComponentCode {
+  display: block;
+  overflow: hidden;
+  flex-basis: 66%;
+  flex-shrink: 1;
+  align-items: stretch;
+  flex-grow: 1;
+  max-width: 66%;
+  width: 100%;
+  height: 100%;
+  background: inherit;
+  background: white;
+}
+.InteractiveComponentToolbar {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  z-index: 100;
+  padding: 10px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-direction: row;
+
+  :first-child {
+  }
+}
+
+.InteractiveComponentToolbarButton {
+  border: none;
+  background: white;
+  margin: 0;
+  border-radius: 5px;
+  overflow: hidden;
+  box-sizing: content-box;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: row;
+  
+  padding: 5px;
+  margin: 0;
+  width: 18px;
+  outline-color: white;
+  box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  outline: 0;
+  
+  &:first-child {
+    margin-right: 10px;
+  }
+
+  // &:focus {
+  //   outline-width: 1px;
+  //   outline-style: dashed;
+  //   outline-color: rgba(255, 255, 255, 0.5);
+  // }
+  
+  img, svg {
+    // border-radius: 5px;
+    border: none;
+
+    padding: 0px;
+    margin: 0;
+    background: transparent;
+
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+  }
+
+}

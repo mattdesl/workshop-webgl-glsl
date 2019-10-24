@@ -1,0 +1,279 @@
+@font-face {
+  font-family: 'Inter';
+  font-style:  normal;
+  font-weight: 400;
+  src: url("../assets/font/Inter-Regular.woff2") format("woff2"),
+       url("../assets/font/Inter-Regular.woff") format("woff");
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style:  normal;
+  font-weight: 500;
+  src: url("../assets/font/Inter-Medium.woff2") format("woff2"),
+       url("../assets/font/Inter-Medium.woff") format("woff");
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style:  normal;
+  font-weight: 600;
+  src: url("../assets/font/Inter-SemiBold.woff2") format("woff2"),
+       url("../assets/font/Inter-SemiBold.woff") format("woff");
+}
+
+@font-face {
+  font-family: 'Hack';
+  font-style:  normal;
+  font-weight: 400;
+  src: url("../assets/font/hack-regular.woff2") format("woff2"),
+       url("../assets/font/hack-regular.woff") format("woff");
+}
+
+html, body, #app {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+body {
+  background: hsl(0, 0%, 100%);
+  font-family: "Inter", system, -apple-system, ".SFNSText-Regular", "San Francisco", "Roboto", "Segoe UI", "Helvetica Neue", "Lucida Grande", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+  font-size: 16px;
+  margin: 0;
+}
+.App.large body {
+  font-size: 18px;
+}
+
+a, a:visited, a:active {
+  color: blue;
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+.App {
+  width: 100%;
+  height: 100%;
+}
+
+.Main {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  box-sizing: border-box;
+  height: 100%;
+}
+
+.Nav, .ContentsListHeader {
+  // position: fixed;
+  width: 100%;
+  height: 40px;
+  background: #fbfbfb;
+  z-index: 900;
+  border-bottom: 1px solid #e8e8e8;
+  // box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.1);
+  font-size: 14px;
+  font-weight: 300;
+
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.App.large .Nav,
+.App.large .ContentsListHeader {
+  font-size: 18px;
+}
+
+.NavTitle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-direction: row;
+}
+.NavSpacer {
+  flex-grow: 1;
+}
+.NavSeparator {
+  // height: 40px;
+  // width: 1px;
+  // background: #e8e8e8;
+  // content: ' ';
+}
+.NavBarFullscreenButton {
+  padding: 5px;
+}
+.ToggleLargeSizeButton {
+  width: 40px;
+  height: 40px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+  border-radius: 0;
+  margin-right: 0px;
+  padding-top: 1px;
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+  user-select: none;
+  border-left: 1px solid #e8e8e8;
+  img {
+    opacity: 0.5;
+  }
+  &:hover {
+    img {
+      opacity: 1.0;
+    }
+    background: #e4edff;
+  }
+}
+.App.large .ToggleLargeSizeButton {
+  background: #e4edff;
+  border-bottom: 1px solid #e8e8e8;
+  img {
+    opacity: 1.0;
+  }
+}
+.NavTitleText {
+  padding-left: 10px;
+}
+.OpenContentsButton, .CloseContentsButton {
+  cursor: pointer;
+
+  align-self: flex-start;
+  border: none;
+  background: #252525;
+  margin: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: row;
+  
+  padding: 0px;
+  margin: 0;
+  width: 40px;
+  height: 40px;
+  outline: 0;
+  border-bottom: 1px solid #e8e8e8;
+
+  img {
+    // border-radius: 5px;
+    border: none;
+    background: transparent;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    margin: 0;
+  }
+}
+
+.ContentsListModal {
+  position: fixed;
+  z-index: 1000;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  top: 0;
+  left: 0;
+}
+
+.ContentsList {
+  z-index: 1001;
+  position: fixed;
+  top: 0;
+  left: 0;
+  min-width: 350px;
+  max-width: 400px;
+  width: 30%;
+  background: hsl(0, 0%, 98%);
+  height: 100%;
+  overflow-y: scroll;
+  font-size: 14px;
+  ul {
+    font-size: inherit;
+    line-height: 2;
+    li {
+    }
+  }
+  ul ul {
+    margin-bottom: 10px;
+  }
+}
+
+.App.large .ContentsList {
+  font-size: 16px;
+  min-width: 400px;
+  max-width: 450px;
+}
+
+.ContentsListItems {
+  padding-bottom: 5px;
+}
+
+.NextPreviousLink {
+  // padding: 10px;
+  box-sizing: content-box;
+  height: 40px;
+  width: 40px;
+  display: flex;
+  border-right: 1px solid #e8e8e8;
+  justify-content: center;
+  align-items: center;
+  flex-direction: row;
+  &:hover {
+    img {
+      opacity: 1.0;
+    }
+    background: #e4edff;
+  }
+  &[disabled], &:disabled {
+    opacity: 0.25;
+    pointer-events: none;
+  }
+
+  &:first-child {
+  }
+  img {
+    opacity: 0.5;
+    border: none;
+    background: transparent;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    margin: 0;
+  }
+}
+
+// .ContentsListHeader {
+//   width: 100%;
+//   display: flex;
+//   justify-content: flex-start;
+//   align-items: center;
+//   padding: 0px;
+//   font-size: 14px;
+//   height: 40px;
+//   box-sizing: border-box;
+//   background: hsl(0, 0%, 80%);
+// }
+
+.ContentsListHeaderTitle {
+  padding-left: 10px;
+}
+
+.token-line:not(:last-child) {
+  min-height: 1rem;
+}

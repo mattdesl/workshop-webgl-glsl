@@ -1,0 +1,96 @@
+.ParamsComponent {
+  &[disabled], &:disabled {
+    opacity: 0.5;
+  }
+  margin-bottom: 10px;
+  &:last-child {
+    margin-bottom: 0;
+  }
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  // padding: 10px;
+
+  padding-left: 10px;
+  padding-right: 10px;
+}
+.ParamsComponentLabel {
+  margin-right: 20px;
+  white-space: nowrap;
+  flex-grow: 1;
+  font-size: 14px;
+}
+.App.large .ParamsComponentLabel {
+  font-size: 18px;
+}
+
+.ParamsComponentLabel.variable {
+  font-family: 'Hack', 'Courier New', monospace;
+  color: #e87633;
+  font-weight: 700;
+}
+
+.ComponentContainer {
+  width: 100%;
+  min-width: 250px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-shrink: 1;
+  height: 36px;
+  &.left {
+    justify-content: flex-start;
+  }
+}
+.ComponentInput {
+  outline: none;
+  font-family: 'Hack', 'Courier New', monospace;
+  font-size: 12px;
+  min-width: 70px;
+  width: 70px;
+  border: 1px solid #dcdcdc;
+  &:hover, &:focus {
+    border: 1px solid #ababab;
+  }
+  text-align: right;
+  border-radius: 5px;
+  padding: 5px 10px;
+  margin-left: 20px;
+}
+.App.large .ComponentInput {
+  font-size: 16px;
+}
+input[type=number].ComponentInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+input[type=number].ComponentInput {
+  -moz-appearance:textfield;
+}
+
+input[type="color"] {
+  cursor: pointer;
+  -webkit-appearance: none;
+  border: none;
+  background: none;
+  border-radius: 5px;
+  padding: 0;
+  overflow: hidden;
+  width: 50px;
+  height: 25px;
+  outline: 0;
+  box-sizing: border-box;
+  border: 1px solid #dcdcdc;
+  &:hover, &:focus, &:active {
+    border: 1px solid #ababab;
+  }
+  
+}
+input[type="color"]::-webkit-color-swatch-wrapper {
+  border: 0;
+  padding: 0;
+}
+input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border: 2px solid white;
+  border-radius: 5px;
+}

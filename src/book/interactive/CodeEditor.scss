@@ -1,0 +1,79 @@
+.CodeEditor {
+  height: 100%;
+  width: 100%;
+  /* border-radius: 5px 0 0 0; */
+  box-sizing: border-box;
+  overflow: hidden; 
+  position: relative;
+}
+.CodeEditorContainer {
+  height: 100%;
+  width: 100%;
+}
+.CodeMirror.has-runtime-error::after {
+  border: 4px solid #e04c4c;
+  border-radius: 0px;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  content: ' ';
+  display: block;
+  z-index: 5;
+  left: 0;
+  pointer-events: none;
+}
+.CodeEditorErrorToast {
+  background: #e04c4c;
+  color: white;
+  position: absolute;
+  font-size: 14px;
+  padding: 5px;
+  padding-left: 5px;
+  border-radius: 3px;
+  bottom: 0;
+  left: 0;
+  z-index: 1001;
+}
+.App.large .CodeEditorErrorToast {
+  font-size: 18px;
+}
+// .CodeMirror {
+//   height: 100%;
+//   width: 100%;
+//   padding: 0px;
+//   padding-top: 10px;
+//   padding-left: 10px;
+//   box-sizing: border-box;
+// }
+
+.CodeMirror {
+  height: 100%;
+  position: relative;
+  box-sizing: border-box;
+  overflow: hidden;
+  font-family: 'Hack', 'Courier New', monospace;
+  font-size: 16px;
+  border-left: 1px solid #e0e0e0;
+}
+.App.large .CodeMirror {
+  font-size: 18px;
+}
+.CodeMirror-scroll {
+  overflow: auto;
+  padding: 10px;
+  height: 100%;
+  position: relative;
+  box-sizing: border-box;
+  outline: none;
+  background: hsl(0, 0%, 100%);
+}
+
+.cm-dynamic-variable {
+  color: #e87633;
+  font-weight: 700;
+}
+.cm-third-party {
+  color: #a6e22e;
+}
