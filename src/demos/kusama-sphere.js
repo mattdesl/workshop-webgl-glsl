@@ -34,8 +34,8 @@ const sketch = ({ context }) => {
   // WebGL background color
 
   const palette = Random.shuffle(Random.shuffle(risoColors).slice(0, 2));
-  renderer.setClearColor(palette[0], 1);
-  // renderer.setClearColor(palette.shift(), 1);
+  // renderer.setClearColor(palette[0], 1);
+  renderer.setClearColor(palette.shift(), 1);
 
   // Setup a camera
   const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
