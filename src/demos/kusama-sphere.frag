@@ -97,7 +97,8 @@ void main () {
 
   // vec3 noisePos = normalize(noiseRotation * vec4(normalize(vPosition), 1.0)).xyz;
   // vec2 v = worley3D(vec3(curPoint * 1.0 + time + timeOffset), 2.0, false);
-  vec2 v = worley3D(vec3(vPosition * 1.5), 1.0, false);
+  float afwidth = length(vec2(dFdx(gl_FragCoord.z), dFdy(gl_FragCoord.z))) * 0.70710678118654757;
+  vec2 v = worley3D(vPosition * 100.0 * vec3(distance(cameraPosition, vWorldPosition)), 1.0, false);
   // float len = aastep((sin(time) * 0.5 + 0.5) * 0.5, v.x);
   float len = aastep(pointScale, minDist);
   // float len = aastep(pointScale, minDist);
@@ -114,13 +115,13 @@ void main () {
 
 	// //rim lighting
 	float rim = 1.0 - max(dot(V, worldNormal), 0.0);
-	rim = smoothstep(-1.0, 1.0, rim);
+	rim = smoothstep(0.0, 1.0, rim + v.x);
 
   vec3 fragColor = color;
   // fragColor.rgb += (normalize(vPosition) * 0.5 + 0.5).xxx * 0.2;
   // fragColor.rgb += normalize(vPosition).zzz * 0.1;
-  fragColor.rgb = mix(vec3(altColor), fragColor, len);
-  fragColor.rgb += rim * altColor * 0.5;
+  fragColor.rgb += rim * backgroundColor * 0.5;
+  fragColor.rgb = mix(vec3(backgroundColor), fragColor, len);
   // fragColor.rgb = mix(fragColor.rgb, backgroundColor, rim);
   // fragColor.rgb = mix(fragColor.rgb, altColor, vWorldNormal.y * 0.5 + 0.5);
   // if (gl_FrontFacing) fragColor = altColor;
