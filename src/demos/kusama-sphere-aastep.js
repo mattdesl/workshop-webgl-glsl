@@ -71,7 +71,7 @@ const sketch = ({ context }) => {
       uniforms: {
         background: { value: new THREE.Color(background) },
         color: { value: new THREE.Color(color0) },
-        pointColor: { value: new THREE.Color(background) },
+        pointColor: { value: new THREE.Color("black") },
         points: { value: points }
       },
       vertexShader: /*glsl*/ `
