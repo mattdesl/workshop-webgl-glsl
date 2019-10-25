@@ -113,7 +113,7 @@ void main () {
 
 	// //rim lighting
 	float rim = 1.0 - max(dot(V, worldNormal), 0.0);
-	rim = smoothstep(0.0, 1.0, rim);
+	rim = smoothstep(-1.0, 1.0, rim);
 
   vec3 fragColor = color;
   // fragColor.rgb += (normalize(vPosition) * 0.5 + 0.5).xxx * 0.2;
