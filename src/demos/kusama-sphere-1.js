@@ -20,9 +20,7 @@ const settings = {
   // Make the loop animated
   animate: true,
   // Get a WebGL canvas rather than 2D
-  context: "webgl",
-  // Turn on MSAA
-  attributes: { antialias: true }
+  context: "webgl"
 };
 
 const sketch = ({ context }) => {
@@ -31,13 +29,9 @@ const sketch = ({ context }) => {
     canvas: context.canvas
   });
 
-  // WebGL background color
-
   const palette = Random.shuffle(Random.shuffle(risoColors).slice(0, 3));
   const background = new THREE.Color(palette.shift());
-  // const background = new THREE.Color(palette[0]);
   renderer.setClearColor(background, 1);
-  // renderer.setClearColor(palette.shift(), 1);
 
   // Setup a camera
   const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
@@ -51,15 +45,11 @@ const sketch = ({ context }) => {
   const scene = new THREE.Scene();
 
   // Setup a geometry
-  // const geometry = new THREE.IcosahedronGeometry(1, 3);
   const geometry = new THREE.SphereGeometry(1, 64, 32);
 
-  // const base = new THREE.IcosahedronGeometry(1, 1);
-  // const base = new THREE.TetrahedronGeometry(1, 1);
-  const base = new THREE.DodecahedronGeometry(1, 0);
-
-  // const icosphere = ;
-  // const icosphere = new THREE.IcosahedronGeometry(1, detail);
+  // const baseGeometry = new THREE.IcosahedronGeometry(1, 1);
+  // const baseGeometry = new THREE.TetrahedronGeometry(1, 1);
+  const baseGeometry = new THREE.DodecahedronGeometry(1, 0);
 
   const meshes = pack({
     dimensions: 3,
