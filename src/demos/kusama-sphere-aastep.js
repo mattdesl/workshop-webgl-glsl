@@ -35,7 +35,7 @@ const sketch = ({ context }) => {
 
   // Setup a camera
   const camera = new THREE.PerspectiveCamera(50, 1, 0.01, 100);
-  camera.position.set(0, 0, -4);
+  camera.position.set(2, 2, -4);
   camera.lookAt(new THREE.Vector3());
 
   // Setup camera controller
@@ -131,6 +131,7 @@ const sketch = ({ context }) => {
     mesh.position.fromArray(sphere.position);
     mesh.scale.setScalar(sphere.radius);
     mesh.quaternion.fromArray(Random.quaternion());
+    mesh.rotationSpeed = Random.gaussian() * 0.1;
     scene.add(mesh);
     return mesh;
   });
@@ -145,7 +146,13 @@ const sketch = ({ context }) => {
       camera.updateProjectionMatrix();
     },
     // Update & render your scene here
-    render({ time }) {
+    render({ deltaTime }) {
+      meshes.forEach(mesh => {
+        mesh.rotateOnWorldAxis(
+          new THREE.Vector3(0, 1, 0),
+          deltaTime * mesh.rotationSpeed
+        );
+      });
       controls.update();
       renderer.render(scene, camera);
     },
