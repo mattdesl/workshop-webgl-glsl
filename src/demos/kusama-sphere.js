@@ -34,7 +34,9 @@ const sketch = ({ context }) => {
   // WebGL background color
 
   const palette = Random.shuffle(Random.shuffle(risoColors).slice(0, 2));
-  renderer.setClearColor(palette[0], 1);
+  // const background = new THREE.Color(palette.shift());
+  const background = new THREE.Color(palette[0]);
+  renderer.setClearColor(background, 1);
   // renderer.setClearColor(palette.shift(), 1);
 
   // Setup a camera
@@ -56,6 +58,12 @@ const sketch = ({ context }) => {
   // const base = new THREE.TetrahedronGeometry(1, 1);
   const base = new THREE.DodecahedronGeometry(1, 0);
 
+  const baseColor = Random.pick(palette);
+  const color = new THREE.Color(baseColor);
+  const altColor = new THREE.Color(
+    Random.pick(palette.filter(p => p !== baseColor))
+  );
+
   // const icosphere = ;
   // const icosphere = new THREE.IcosahedronGeometry(1, detail);
 
@@ -65,7 +73,7 @@ const sketch = ({ context }) => {
     minRadius: 0.05,
     padding: 0.005,
     bounds: 1,
-    maxCount: 10
+    maxCount: 8
   }).map((p, i, list) => {
     const mesh = createMesh();
     mesh.position.fromArray(p.position);
@@ -121,12 +129,6 @@ const sketch = ({ context }) => {
     });
 
     const pointScale = 0.2;
-
-    const baseColor = Random.pick(palette);
-    const color = new THREE.Color(baseColor);
-    const altColor = new THREE.Color(
-      Random.pick(palette.filter(p => p !== baseColor))
-    );
     // const altColor = color
     //   .clone()
     //   .offsetHSL(
@@ -143,6 +145,7 @@ const sketch = ({ context }) => {
         derivatives: true
       },
       uniforms: {
+        backgroundColor: { value: background },
         color: { value: color },
         altColor: { value: altColor },
         time: { value: 0 },

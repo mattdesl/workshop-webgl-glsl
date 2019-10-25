@@ -14,7 +14,9 @@ uniform float timeOffset;
 uniform float pointScale;
 uniform vec3 color;
 uniform vec3 altColor;
+uniform vec3 backgroundColor;
 uniform mat4 noiseRotation;
+
 varying vec4 vNearestPoint;
 varying vec3 vWorldNormal;
 varying vec3 vWorldPosition;
@@ -111,14 +113,15 @@ void main () {
 
 	// //rim lighting
 	float rim = 1.0 - max(dot(V, worldNormal), 0.0);
-	rim = smoothstep(-1.0, 1.0, rim);
+	rim = smoothstep(0.0, 1.0, rim);
 
   vec3 fragColor = color;
   // fragColor.rgb += (normalize(vPosition) * 0.5 + 0.5).xxx * 0.2;
   // fragColor.rgb += normalize(vPosition).zzz * 0.1;
-  // fragColor.rgb = mix(fragColor.rgb, altColor, rim);
+  fragColor.rgb = mix(vec3(altColor), fragColor, len);
+  fragColor.rgb += rim * altColor * 0.2;
+  // fragColor.rgb = mix(fragColor.rgb, backgroundColor, rim);
   // fragColor.rgb = mix(fragColor.rgb, altColor, vWorldNormal.y * 0.5 + 0.5);
-  fragColor.rgb = mix(altColor, fragColor.rgb, len);
   // if (gl_FrontFacing) fragColor = altColor;
   gl_FragColor = vec4(fragColor, 1.0);
 }
