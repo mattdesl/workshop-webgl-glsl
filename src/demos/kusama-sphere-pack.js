@@ -104,7 +104,7 @@ const sketch = ({ context }) => {
         
         vec3 fragColor = mix(color, pointColor, inside);
 
-        fragColor += sphereRim(vPosition) * color * 0.25;
+        fragColor += sphereRim(vPosition) * color * 0.2;
 
         gl_FragColor = vec4(fragColor, 1.0);
       }
