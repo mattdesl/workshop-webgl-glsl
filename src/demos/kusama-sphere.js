@@ -16,7 +16,7 @@ const pack = require("./pack-sphere");
 
 const settings = {
   dimensions: [2048, 2048],
-  // scaleToView: true,
+  scaleToView: true,
   // Make the loop animated
   animate: true,
   // Get a WebGL canvas rather than 2D
@@ -33,9 +33,9 @@ const sketch = ({ context }) => {
 
   // WebGL background color
 
-  const palette = Random.shuffle(Random.shuffle(risoColors).slice(0, 2));
-  // const background = new THREE.Color(palette.shift());
-  const background = new THREE.Color(palette[0]);
+  const palette = Random.shuffle(Random.shuffle(risoColors).slice(0, 3));
+  const background = new THREE.Color(palette.shift());
+  // const background = new THREE.Color(palette[0]);
   renderer.setClearColor(background, 1);
   // renderer.setClearColor(palette.shift(), 1);
 
@@ -57,12 +57,6 @@ const sketch = ({ context }) => {
   // const base = new THREE.IcosahedronGeometry(1, 1);
   // const base = new THREE.TetrahedronGeometry(1, 1);
   const base = new THREE.DodecahedronGeometry(1, 0);
-
-  const baseColor = Random.pick(palette);
-  const color = new THREE.Color(baseColor);
-  const altColor = new THREE.Color(
-    Random.pick(palette.filter(p => p !== baseColor))
-  );
 
   // const icosphere = ;
   // const icosphere = new THREE.IcosahedronGeometry(1, detail);
@@ -127,6 +121,12 @@ const sketch = ({ context }) => {
       // return new THREE.Vector4(x, y, z, 1);
       // return new THREE.Vector4(x, y, z, Math.min(2, Random.gaussian(0.5, 1)));
     });
+
+    const baseColor = Random.pick(palette);
+    const color = new THREE.Color(baseColor);
+    const altColor = new THREE.Color(
+      Random.pick(palette.filter(p => p !== baseColor))
+    );
 
     const pointScale = 0.2;
     // const altColor = color

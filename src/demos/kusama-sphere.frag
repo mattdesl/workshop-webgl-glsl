@@ -97,9 +97,10 @@ void main () {
 
   // vec3 noisePos = normalize(noiseRotation * vec4(normalize(vPosition), 1.0)).xyz;
   // vec2 v = worley3D(vec3(curPoint * 1.0 + time + timeOffset), 2.0, false);
-  // vec2 v = worley3D(vec3(vPosition * 1.5), 1.0, false);
+  vec2 v = worley3D(vec3(vPosition * 1.5), 1.0, false);
   // float len = aastep((sin(time) * 0.5 + 0.5) * 0.5, v.x);
   float len = aastep(pointScale, minDist);
+  // float len = aastep(pointScale, minDist);
   // if (len < 0.1) discard;
   // float len = noise(vec4(curPoint.xyz, time));
   // float len = aastep(v.x, minDist);
@@ -118,8 +119,8 @@ void main () {
   vec3 fragColor = color;
   // fragColor.rgb += (normalize(vPosition) * 0.5 + 0.5).xxx * 0.2;
   // fragColor.rgb += normalize(vPosition).zzz * 0.1;
-  fragColor.rgb = mix(vec3(1.0), fragColor, len);
-  fragColor.rgb += rim * altColor * 0.2;
+  fragColor.rgb = mix(vec3(altColor), fragColor, len);
+  fragColor.rgb += rim * altColor * 0.5;
   // fragColor.rgb = mix(fragColor.rgb, backgroundColor, rim);
   // fragColor.rgb = mix(fragColor.rgb, altColor, vWorldNormal.y * 0.5 + 0.5);
   // if (gl_FrontFacing) fragColor = altColor;
