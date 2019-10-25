@@ -118,7 +118,7 @@ void main () {
   vec3 fragColor = color;
   // fragColor.rgb += (normalize(vPosition) * 0.5 + 0.5).xxx * 0.2;
   // fragColor.rgb += normalize(vPosition).zzz * 0.1;
-  fragColor.rgb = mix(vec3(altColor), fragColor, len);
+  fragColor.rgb = mix(vec3(1.0), fragColor, len);
   fragColor.rgb += rim * altColor * 0.2;
   // fragColor.rgb = mix(fragColor.rgb, backgroundColor, rim);
   // fragColor.rgb = mix(fragColor.rgb, altColor, vWorldNormal.y * 0.5 + 0.5);
