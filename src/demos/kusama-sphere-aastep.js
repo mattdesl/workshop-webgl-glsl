@@ -8,6 +8,7 @@ const Random = require("canvas-sketch-util/random");
 const canvasSketch = require("canvas-sketch");
 const packSpheres = require("pack-spheres");
 const risoColors = require("riso-colors").map(h => h.hex);
+const paperColors = require("paper-colors").map(h => h.hex);
 const glslify = require("glslify");
 
 const settings = {
@@ -25,8 +26,8 @@ const sketch = ({ context }) => {
     canvas: context.canvas
   });
 
-  const palette = Random.shuffle(risoColors).slice(0, 2);
-  const backgroundHex = palette[0];
+  const palette = Random.shuffle(risoColors).slice(0, 3);
+  const backgroundHex = Random.pick(paperColors);
   const background = new THREE.Color(backgroundHex);
 
   // WebGL background color
