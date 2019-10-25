@@ -22,17 +22,23 @@ This repo contains the source code for my Frontend Masters *Advanced Creative Co
 
   - [WebGL & GLSL — A Primer](https://mattdesl.github.io/workshop-webgl-glsl/)
 
-- 🔥 Online Demos
+- 🔥 Demos
 
   - [canvas-sketch](https://glitch.com/edit/#!/canvas-sketch-basic?path=sketch.js)
 
   - [ThreeJS Demos](https://three-demos.glitch.me/)
+
+  - [Kusama Spheres](./src/demos) (run locally)
 
 - 🔧 Tools & Prerequisites
 
   - `node@8.x` and `npm@5.x` or higher (see [here](./guides/node-and-npm.md) on how to install)
 
   - `canvas-sketch-cli@1.11.4` or higher (see [here](./guides/canvas-sketch.md) on how to install)
+
+- ️️️⚡️ Some Suggested npm Modules
+
+  - [Modules for Creative Coding](./guides/modules.md)
 
 - ✨ More Resources
 
