@@ -27,7 +27,7 @@ const sketch = ({ context }) => {
   });
 
   const palette = Random.shuffle(risoColors).slice(0, 3);
-  const backgroundHex = Random.pick(paperColors);
+  const backgroundHex = palette.shift();
   const background = new THREE.Color(backgroundHex);
 
   // WebGL background color
@@ -71,7 +71,7 @@ const sketch = ({ context }) => {
       uniforms: {
         background: { value: new THREE.Color(background) },
         color: { value: new THREE.Color(color0) },
-        pointColor: { value: new THREE.Color("black") },
+        pointColor: { value: new THREE.Color(color1) },
         points: { value: points }
       },
       vertexShader: /*glsl*/ `

@@ -89,7 +89,7 @@ const sketch = ({ context }) => {
         vec3 worldPosition = (modelMatrix * vec4(spherePosition, 1.0)).xyz;
         vec3 V = normalize(cameraPosition - worldPosition);
         float rim = 1.0 - max(dot(V, worldNormal), 0.0);
-        return smoothstep(0.0, 1.0, pow(rim, 0.5));
+        return pow(smoothstep(0.0, 1.0, rim), 0.5);
       }
 
       void main () {
