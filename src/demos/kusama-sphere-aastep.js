@@ -15,7 +15,7 @@ const settings = {
   scaleToView: true,
   dimensions: [2048, 2048],
   // Make the loop animated
-  animate: true,
+  // animate: true,
   // Get a WebGL canvas rather than 2D
   context: "webgl"
 };
@@ -26,7 +26,7 @@ const sketch = ({ context }) => {
     canvas: context.canvas
   });
 
-  const palette = Random.shuffle(risoColors).slice(0, 5);
+  const palette = Random.shuffle(risoColors).slice(0, 10);
   const backgroundHex = Random.pick(paperColors);
   const background = new THREE.Color(backgroundHex);
 
@@ -34,7 +34,7 @@ const sketch = ({ context }) => {
   renderer.setClearColor(background, 1);
 
   // Setup a camera
-  const camera = new THREE.PerspectiveCamera(50, 1, 0.01, 100);
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
   camera.position.set(2, 2, -4);
   camera.lookAt(new THREE.Vector3());
 
@@ -53,8 +53,9 @@ const sketch = ({ context }) => {
 
   const spheres = packSpheres({
     maxCount: 10,
-    maxRadius: 0.75,
-    minRadius: 0.05
+    bounds: 1.15,
+    maxRadius: 1,
+    minRadius: 0.075
   });
 
   const meshes = spheres.map(sphere => {
