@@ -25,7 +25,7 @@ const sketch = ({ context }) => {
     canvas: context.canvas
   });
 
-  const palette = Random.shuffle(risoColors).slice(0, 3);
+  const palette = Random.shuffle(risoColors).slice(0, 2);
   const backgroundHex = palette[0];
   const background = new THREE.Color(backgroundHex);
 
@@ -115,7 +115,7 @@ const sketch = ({ context }) => {
 
         float rim = sphereRim(vPosition);
 
-        fragColor += rim * color * 0.5;
+        fragColor += rim * color * 0.25;
 
         float stroke = aastep(0.9, rim);
         fragColor = mix(fragColor, background, stroke);
