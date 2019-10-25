@@ -26,8 +26,8 @@ const sketch = ({ context }) => {
     canvas: context.canvas
   });
 
-  const palette = Random.shuffle(risoColors).slice(0, 3);
-  const backgroundHex = palette.shift();
+  const palette = Random.shuffle(risoColors).slice(0, 5);
+  const backgroundHex = Random.pick(paperColors);
   const background = new THREE.Color(backgroundHex);
 
   // WebGL background color
