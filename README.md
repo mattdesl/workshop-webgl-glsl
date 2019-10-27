@@ -36,7 +36,11 @@ This repo contains the source code for my Frontend Masters *Advanced Creative Co
 
   - `canvas-sketch-cli@1.11.4` or higher (see [here](./guides/canvas-sketch.md) on how to install)
 
-- ️️️⚡️ Some Suggested npm Modules
+- ⚡ Code Snippets
+
+  - [Snippets used in the Workshop](./guides/snippets.md)
+
+- ️️️📦️ Some Suggested npm Modules
 
   - [Modules for Creative Coding](./guides/modules.md)
 

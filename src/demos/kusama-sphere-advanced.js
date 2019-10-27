@@ -26,8 +26,8 @@ const sketch = ({ context }) => {
     canvas: context.canvas
   });
 
-  const palette = Random.shuffle(risoColors).slice(0, 10);
-  const backgroundHex = Random.pick(paperColors);
+  const palette = Random.shuffle(risoColors).slice(0, 4);
+  const backgroundHex = "hsl(0, 0%, 20%)"; //Random.pick(paperColors);
   const background = new THREE.Color(backgroundHex);
 
   // WebGL background color
@@ -49,7 +49,11 @@ const sketch = ({ context }) => {
   const baseGeometry = new THREE.IcosahedronGeometry(1, 1);
 
   // List of points we will pass to the shader
-  const points = baseGeometry.vertices;
+  const points = baseGeometry.vertices.map(p => {
+    const { x, y, z } = p;
+    const size = Random.range(0, 2);
+    return new THREE.Vector4(x, y, z, size);
+  });
 
   const spheres = packSpheres({
     maxCount: 10,
@@ -72,7 +76,7 @@ const sketch = ({ context }) => {
       uniforms: {
         background: { value: new THREE.Color(background) },
         color: { value: new THREE.Color(color0) },
-        pointColor: { value: new THREE.Color(color1) },
+        pointColor: { value: new THREE.Color("black") },
         points: { value: points }
       },
       vertexShader: /*glsl*/ `
@@ -87,7 +91,7 @@ const sketch = ({ context }) => {
       uniform vec3 color;
       uniform vec3 pointColor;
       uniform vec3 background;
-      uniform vec3 points[POINT_COUNT];
+      uniform vec4 points[POINT_COUNT];
 
       #pragma glslify: aastep = require('glsl-aastep');
 
@@ -105,22 +109,26 @@ const sketch = ({ context }) => {
 
       void main () {
         float dist = 1000.0;
+        float size = 1.0;
         for (int i = 0; i < POINT_COUNT; i++) {
-          vec3 point = points[i];
-          float curDist = distance(vPosition, point);
-          dist = min(curDist, dist);
+          vec4 point = points[i];
+          float curDist = distance(vPosition, point.xyz);
+          if (curDist < dist) {
+            dist = curDist;
+            size = point.w;
+          }
         }
 
-        float inside = 1.0 - aastep(0.1, dist);
+        float inside = 1.0 - aastep(0.1 * size, dist);
         
-        vec3 fragColor = mix(color, pointColor, inside);
+        vec3 fragColor = mix(pointColor, color, inside);
 
         float rim = sphereRim(vPosition);
 
-        fragColor += rim * color * 0.25;
+        fragColor += (1.0 - rim) * color * 0.25;
 
-        float stroke = aastep(0.9, rim);
-        fragColor = mix(fragColor, background, stroke);
+        float stroke = aastep(0.925, rim);
+        fragColor = mix(fragColor, color, stroke);
 
         gl_FragColor = vec4(fragColor, 1.0);
       }
