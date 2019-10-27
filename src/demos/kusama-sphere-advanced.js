@@ -53,7 +53,7 @@ const sketch = ({ context }) => {
   const neighbourCount = 3;
   addNeighbourAttributes(geometry, baseGeometry.vertices, neighbourCount);
 
-  const bounds = 1;
+  const bounds = 1.5;
   const spheres = packSpheres({
     sample: () => Random.insideSphere(),
     outside: (position, radius) => {
@@ -61,7 +61,8 @@ const sketch = ({ context }) => {
         new THREE.Vector3().fromArray(position).length() + radius >= bounds
       );
     },
-    minRadius: () => Math.max(0.05, 0.05 + Math.abs(Random.gaussian(0, 0.1))),
+    minRadius: () =>
+      Math.max(0.05, 0.05 + Math.min(1.0, Math.abs(Random.gaussian(0, 0.1)))),
     maxCount: 20,
     packAttempts: 4000,
     bounds,
