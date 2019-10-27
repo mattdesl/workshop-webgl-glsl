@@ -16,7 +16,7 @@ const settings = {
   // Make the loop animated
   animate: true,
   scaleToView: true,
-  dimensions: [512, 512],
+  dimensions: [2048, 2048],
   // Get a WebGL canvas rather than 2D
   context: "webgl"
 };
@@ -27,8 +27,8 @@ const sketch = ({ context }) => {
     canvas: context.canvas
   });
 
-  const palette = Random.shuffle(risoColors).slice(0, 4);
-  const backgroundHex = Random.pick(paperColors);
+  const palette = Random.shuffle(risoColors).slice(0, 3);
+  const backgroundHex = palette[0]; //Random.pick(paperColors);
   const background = new THREE.Color(backgroundHex);
 
   // WebGL background color
@@ -154,10 +154,11 @@ const sketch = ({ context }) => {
 
         float rim = sphereRim(vPosition);
 
-        fragColor += pow(vUv.y, 2.0 * vUv.y) * pointColor * 0.5;
+        fragColor += rim * color * 0.25;
+        // fragColor += pow(vUv.y, 2.0 * vUv.y) * color * 0.25;
 
-        float stroke = aastep(0.8, rim);
-        fragColor = mix(fragColor, background, stroke);
+        float stroke = aastep(0.9, rim);
+        fragColor = mix(fragColor, color, stroke);
 
         gl_FragColor = vec4(fragColor, 1.0);
       }
