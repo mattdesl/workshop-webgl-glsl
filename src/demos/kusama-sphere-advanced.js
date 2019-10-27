@@ -149,7 +149,7 @@ const sketch = ({ context }) => {
         vec3 fragColor = mix(color, pointColor, inside);
 
         float rim = sphereRim(vPosition);
-        fragColor += (1.0 - rim) * color * 0.5;
+        fragColor += (1.0 - rim) * color * 0.25;
 
         float stroke = aastep(0.9, rim);
         fragColor = mix(fragColor, background, stroke);
