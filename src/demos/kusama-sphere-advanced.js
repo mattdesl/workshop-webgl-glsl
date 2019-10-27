@@ -27,8 +27,8 @@ const sketch = ({ context }) => {
     canvas: context.canvas
   });
 
-  const palette = Random.shuffle(risoColors).slice(0, 4);
-  const backgroundHex = "hsl(0, 0%, 10%)";
+  const palette = Random.shuffle(risoColors).slice(0, 10);
+  const backgroundHex = Random.pick(paperColors);
   const background = new THREE.Color(backgroundHex);
 
   // WebGL background color
@@ -61,8 +61,8 @@ const sketch = ({ context }) => {
         new THREE.Vector3().fromArray(position).length() + radius >= bounds
       );
     },
-    minRadius: () => Math.max(0.04, 0.05 + Random.gaussian(0, 0.1)),
-    maxCount: 50,
+    minRadius: () => Math.max(0.05, 0.05 + Math.abs(Random.gaussian(0, 0.1))),
+    maxCount: 20,
     packAttempts: 4000,
     bounds,
     maxRadius: 1.5,
@@ -82,7 +82,7 @@ const sketch = ({ context }) => {
       },
       uniforms: {
         background: { value: new THREE.Color(background) },
-        color: { value: new THREE.Color("black") },
+        color: { value: new THREE.Color(color0) },
         pointColor: { value: new THREE.Color(color1) },
         time: { value: 0 }
       },
@@ -95,8 +95,11 @@ const sketch = ({ context }) => {
       varying vec3 vNeighbour1;
       varying vec3 vNeighbour2;
       
+      varying vec2 vUv;
+
       void main () {
         vPosition = position;
+        vUv = uv;
         
         vNeighbour0 = neighbour0 - vPosition;
         vNeighbour1 = neighbour1 - vPosition;
@@ -107,6 +110,7 @@ const sketch = ({ context }) => {
       `,
       fragmentShader: glslify(/* glsl */ `
       varying vec3 vPosition;
+      varying vec2 vUv;
       uniform vec3 color;
       uniform vec3 pointColor;
       uniform vec3 background;
@@ -118,11 +122,9 @@ const sketch = ({ context }) => {
       uniform mat4 modelMatrix;
       uniform float time;
 
-      varying vec4 vNearestPoint;
       varying vec3 vNeighbour0;
       varying vec3 vNeighbour1;
       varying vec3 vNeighbour2;
-      varying vec3 vNeighbour3;
 
       float sphereRim (vec3 spherePosition) {
         vec3 normal = normalize(spherePosition.xyz);
@@ -151,10 +153,10 @@ const sketch = ({ context }) => {
 
         float rim = sphereRim(vPosition);
 
-        // fragColor += (1.0 - rim) * pointColor * 0.25;
+        fragColor += pow(vUv.y, 2.0 * vUv.y) * pointColor * 0.5;
 
-        // float stroke = aastep(0.9, rim);
-        // fragColor = mix(fragColor, pointColor, stroke);
+        float stroke = aastep(0.8, rim);
+        fragColor = mix(fragColor, background, stroke);
 
         gl_FragColor = vec4(fragColor, 1.0);
       }
