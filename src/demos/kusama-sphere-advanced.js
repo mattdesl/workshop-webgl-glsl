@@ -10,7 +10,6 @@ const packSpheres = require("pack-spheres");
 const risoColors = require("riso-colors").map(h => h.hex);
 const paperColors = require("paper-colors").map(h => h.hex);
 const glslify = require("glslify");
-const triangleCentroid = require("triangle-centroid");
 
 const settings = {
   // Make the loop animated
