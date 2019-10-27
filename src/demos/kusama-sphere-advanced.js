@@ -10,12 +10,13 @@ const packSpheres = require("pack-spheres");
 const risoColors = require("riso-colors").map(h => h.hex);
 const paperColors = require("paper-colors").map(h => h.hex);
 const glslify = require("glslify");
+const triangleCentroid = require("triangle-centroid");
 
 const settings = {
-  scaleToView: true,
-  dimensions: [2048, 2048],
   // Make the loop animated
-  // animate: true,
+  animate: true,
+  scaleToView: true,
+  dimensions: [512, 512],
   // Get a WebGL canvas rather than 2D
   context: "webgl"
 };
@@ -27,7 +28,7 @@ const sketch = ({ context }) => {
   });
 
   const palette = Random.shuffle(risoColors).slice(0, 4);
-  const backgroundHex = "hsl(0, 0%, 20%)"; //Random.pick(paperColors);
+  const backgroundHex = "hsl(0, 0%, 10%)";
   const background = new THREE.Color(backgroundHex);
 
   // WebGL background color
@@ -45,15 +46,12 @@ const sketch = ({ context }) => {
   const scene = new THREE.Scene();
 
   // Setup a geometry
-  const geometry = new THREE.SphereGeometry(1, 64, 32);
+  const geometry = new THREE.IcosahedronBufferGeometry(1, 3);
   const baseGeometry = new THREE.IcosahedronGeometry(1, 1);
 
-  // List of points we will pass to the shader
-  const points = baseGeometry.vertices.map(p => {
-    const { x, y, z } = p;
-    const size = Random.range(0, 2);
-    return new THREE.Vector4(x, y, z, size);
-  });
+  // For each face, provide the 3 neighbouring points to that face
+  const neighbourCount = 3;
+  addNeighbourAttributes(geometry, baseGeometry.vertices, neighbourCount);
 
   const spheres = packSpheres({
     maxCount: 10,
@@ -68,21 +66,33 @@ const sketch = ({ context }) => {
     // Setup a material
     const material = new THREE.ShaderMaterial({
       defines: {
-        POINT_COUNT: points.length
+        TEST: "const float a = 0.0;"
       },
       extensions: {
         derivatives: true
       },
       uniforms: {
         background: { value: new THREE.Color(background) },
-        color: { value: new THREE.Color(color0) },
-        pointColor: { value: new THREE.Color("black") },
-        points: { value: points }
+        color: { value: new THREE.Color("black") },
+        pointColor: { value: new THREE.Color(color1) },
+        time: { value: 0 }
       },
       vertexShader: /*glsl*/ `
       varying vec3 vPosition;
+      attribute vec3 neighbour0;
+      attribute vec3 neighbour1;
+      attribute vec3 neighbour2;
+      varying vec3 vNeighbour0;
+      varying vec3 vNeighbour1;
+      varying vec3 vNeighbour2;
+      
       void main () {
         vPosition = position;
+        
+        vNeighbour0 = neighbour0 - vPosition;
+        vNeighbour1 = neighbour1 - vPosition;
+        vNeighbour2 = neighbour2 - vPosition;
+
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }
       `,
@@ -91,12 +101,19 @@ const sketch = ({ context }) => {
       uniform vec3 color;
       uniform vec3 pointColor;
       uniform vec3 background;
-      uniform vec4 points[POINT_COUNT];
 
       #pragma glslify: aastep = require('glsl-aastep');
+      #pragma glslify: noise = require('glsl-noise/simplex/4d.glsl');
 
       // For the sphere rim
       uniform mat4 modelMatrix;
+      uniform float time;
+
+      varying vec4 vNearestPoint;
+      varying vec3 vNeighbour0;
+      varying vec3 vNeighbour1;
+      varying vec3 vNeighbour2;
+      varying vec3 vNeighbour3;
 
       float sphereRim (vec3 spherePosition) {
         vec3 normal = normalize(spherePosition.xyz);
@@ -108,27 +125,27 @@ const sketch = ({ context }) => {
       }
 
       void main () {
-        float dist = 1000.0;
-        float size = 1.0;
-        for (int i = 0; i < POINT_COUNT; i++) {
-          vec4 point = points[i];
-          float curDist = distance(vPosition, point.xyz);
-          if (curDist < dist) {
-            dist = curDist;
-            size = point.w;
-          }
-        }
+        // Find the smallest distance of the 3 neighbours
+        float d0 = dot(vNeighbour0, vNeighbour0);
+        float d1 = dot(vNeighbour1, vNeighbour1);
+        float d2 = dot(vNeighbour2, vNeighbour2);
+        float dist = sqrt(min(d0, min(d1, d2)));
 
-        float inside = 1.0 - aastep(0.1 * size, dist);
+        // use the first (closest) neighbour to create noise offets
+        vec3 curNeighbour = vNeighbour0;
+
+        float pointOff = noise(vec4(vPosition + vNeighbour0.xyz, time * 0.5));
+        float pointSize = max(0.0, 0.05 + 0.2 * pointOff);
+        float inside = 1.0 - aastep(pointSize, dist);
         
-        vec3 fragColor = mix(pointColor, color, inside);
+        vec3 fragColor = mix(color, pointColor, inside);
 
         float rim = sphereRim(vPosition);
 
-        fragColor += (1.0 - rim) * color * 0.25;
+        fragColor += (1.0 - rim) * pointColor * 0.25;
 
-        float stroke = aastep(0.925, rim);
-        fragColor = mix(fragColor, color, stroke);
+        float stroke = aastep(0.9, rim);
+        fragColor = mix(fragColor, pointColor, stroke);
 
         gl_FragColor = vec4(fragColor, 1.0);
       }
@@ -148,20 +165,22 @@ const sketch = ({ context }) => {
   // draw each frame
   return {
     // Handle resize events here
-    resize({ pixelRatio, canvasWidth, canvasHeight }) {
+    resize({ pixelRatio, viewportWidth, viewportHeight }) {
       renderer.setPixelRatio(pixelRatio);
-      renderer.setSize(canvasWidth, canvasHeight, false);
-      camera.aspect = canvasWidth / canvasHeight;
+      renderer.setSize(viewportWidth, viewportHeight, false);
+      camera.aspect = viewportWidth / viewportHeight;
       camera.updateProjectionMatrix();
     },
     // Update & render your scene here
-    render({ deltaTime }) {
+    render({ time, deltaTime }) {
       meshes.forEach(mesh => {
         mesh.rotateOnWorldAxis(
           new THREE.Vector3(0, 1, 0),
           deltaTime * mesh.rotationSpeed
         );
+        mesh.material.uniforms.time.value = time;
       });
+      scene.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), 0.05 * deltaTime);
       controls.update();
       renderer.render(scene, camera);
     },
@@ -174,3 +193,86 @@ const sketch = ({ context }) => {
 };
 
 canvasSketch(sketch, settings);
+
+function addNeighbourAttributes(
+  bufferGeometry,
+  baseVertices,
+  neighbourCount = 3
+) {
+  if (bufferGeometry.getIndex()) {
+    throw new Error(
+      "This is only supported on un-indexed geometries right now."
+    );
+  }
+
+  // We will give each triangle in the geometry N nearest neighbours
+  const positionAttr = bufferGeometry.getAttribute("position");
+  const vertexCount = positionAttr.count;
+
+  // First let's build a little list of attribute names + vertex data
+  const neighbourAttribs = [];
+  for (let i = 0; i < neighbourCount; i++) {
+    neighbourAttribs.push({
+      name: `neighbour${i}`,
+      data: []
+    });
+  }
+
+  // For each triangle
+  for (let i = 0; i < vertexCount / 3; i++) {
+    // Get the triangle centroid, we will use that for comparison
+    const centroid = new THREE.Vector3();
+    for (let c = 0; c < 3; c++) {
+      const x = positionAttr.getX(i * 3 + c);
+      const y = positionAttr.getY(i * 3 + c);
+      const z = positionAttr.getZ(i * 3 + c);
+      const vert = new THREE.Vector3(x, y, z);
+      centroid.add(vert);
+    }
+    centroid.divideScalar(3);
+
+    // Get the N nearest neighbours to the centroid
+    const neighbours = getNearestNeighbours(
+      centroid,
+      baseVertices,
+      neighbourCount
+    );
+
+    // Go through each neighbour and add its XYZ data in
+    neighbours.forEach((n, i) => {
+      // Repeat this 3 times so that we do it for each vertex
+      // in the triangle
+      for (let c = 0; c < 3; c++) {
+        neighbourAttribs[i].data.push(...n.toArray());
+      }
+    });
+  }
+
+  // Now that we have flat arrays for each neighbour,
+  // we add it into the buffer geometry
+  neighbourAttribs.forEach(attrib => {
+    const array = new Float32Array(attrib.data);
+    const buf = new THREE.BufferAttribute(array, 3);
+    bufferGeometry.addAttribute(attrib.name, buf);
+  });
+}
+
+// a simple but inefficient method to extract N
+// nearest neighbours from a point with a given vertex list
+function getNearestNeighbours(point, list, count) {
+  // get distance squared from this point to all others
+  const data = list
+    // Avoid any that match the input point
+    .filter(p => p.point !== point)
+    // Get an object with distance
+    .map(other => {
+      return {
+        distance: point.distanceToSquared(other),
+        point: other
+      };
+    });
+  // sort by distance
+  data.sort((a, b) => a.distance - b.distance);
+  // return only N neighbours
+  return data.slice(0, count).map(p => p.point);
+}
