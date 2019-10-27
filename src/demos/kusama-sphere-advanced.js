@@ -75,9 +75,6 @@ const sketch = ({ context }) => {
 
     // Setup a material
     const material = new THREE.ShaderMaterial({
-      defines: {
-        TEST: "const float a = 0.0;"
-      },
       extensions: {
         derivatives: true
       },
