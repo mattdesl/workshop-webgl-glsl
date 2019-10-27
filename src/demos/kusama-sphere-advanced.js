@@ -27,8 +27,8 @@ const sketch = ({ context }) => {
     canvas: context.canvas
   });
 
-  const palette = Random.shuffle(risoColors).slice(0, 3);
-  const backgroundHex = palette[0]; //Random.pick(paperColors);
+  const palette = Random.shuffle(risoColors).slice(0, 2);
+  const backgroundHex = Random.pick(paperColors);
   const background = new THREE.Color(backgroundHex);
 
   // WebGL background color
@@ -96,12 +96,8 @@ const sketch = ({ context }) => {
       varying vec3 vNeighbour1;
       varying vec3 vNeighbour2;
       
-      varying vec3 vNoisePosition;
-      varying vec2 vUv;
-
       void main () {
         vPosition = position;
-        vUv = uv;
         
         vNeighbour0 = neighbour0 - vPosition;
         vNeighbour1 = neighbour1 - vPosition;
@@ -112,20 +108,17 @@ const sketch = ({ context }) => {
       `,
       fragmentShader: glslify(/* glsl */ `
       varying vec3 vPosition;
-      varying vec2 vUv;
       uniform vec3 color;
       uniform vec3 pointColor;
       uniform vec3 background;
 
       #pragma glslify: aastep = require('glsl-aastep');
       #pragma glslify: noise = require('glsl-noise/simplex/4d.glsl');
-      #pragma glslify: worley = require('glsl-worley/worley3D.glsl');
 
       // For the sphere rim
       uniform mat4 modelMatrix;
       uniform float time;
 
-      varying vec3 vNoisePosition;
       varying vec3 vNeighbour0;
       varying vec3 vNeighbour1;
       varying vec3 vNeighbour2;
@@ -152,11 +145,11 @@ const sketch = ({ context }) => {
         float pointOff = noise(vec4(vPosition + vNeighbour0.xyz, time * 0.5));
         float pointSize = max(0.0, 0.05 + 0.2 * pointOff);
         float inside = 1.0 - aastep(pointSize, dist);
-        
+
         vec3 fragColor = mix(color, pointColor, inside);
 
         float rim = sphereRim(vPosition);
-        fragColor += (1.0-rim) * color * 0.5;
+        fragColor += (1.0 - rim) * color * 0.5;
 
         float stroke = aastep(0.9, rim);
         fragColor = mix(fragColor, background, stroke);
