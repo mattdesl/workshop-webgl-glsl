@@ -84,7 +84,7 @@ const sketch = ({ context }) => {
       uniforms: {
         background: { value: new THREE.Color(background) },
         color: { value: new THREE.Color(color0) },
-        pointColor: { value: new THREE.Color(color1) },
+        pointColor: { value: new THREE.Color("black") },
         time: { value: 0 }
       },
       vertexShader: /*glsl*/ `
@@ -96,6 +96,7 @@ const sketch = ({ context }) => {
       varying vec3 vNeighbour1;
       varying vec3 vNeighbour2;
       
+      varying vec3 vNoisePosition;
       varying vec2 vUv;
 
       void main () {
@@ -118,11 +119,13 @@ const sketch = ({ context }) => {
 
       #pragma glslify: aastep = require('glsl-aastep');
       #pragma glslify: noise = require('glsl-noise/simplex/4d.glsl');
+      #pragma glslify: worley = require('glsl-worley/worley3D.glsl');
 
       // For the sphere rim
       uniform mat4 modelMatrix;
       uniform float time;
 
+      varying vec3 vNoisePosition;
       varying vec3 vNeighbour0;
       varying vec3 vNeighbour1;
       varying vec3 vNeighbour2;
@@ -153,12 +156,10 @@ const sketch = ({ context }) => {
         vec3 fragColor = mix(color, pointColor, inside);
 
         float rim = sphereRim(vPosition);
-
-        fragColor += rim * color * 0.25;
-        // fragColor += pow(vUv.y, 2.0 * vUv.y) * color * 0.25;
+        fragColor += (1.0-rim) * color * 0.5;
 
         float stroke = aastep(0.9, rim);
-        fragColor = mix(fragColor, color, stroke);
+        fragColor = mix(fragColor, background, stroke);
 
         gl_FragColor = vec4(fragColor, 1.0);
       }
