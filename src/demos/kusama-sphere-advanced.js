@@ -27,7 +27,7 @@ const sketch = ({ context }) => {
     canvas: context.canvas
   });
 
-  const palette = Random.shuffle(risoColors).slice(0, 10);
+  const palette = Random.shuffle(risoColors).slice(0, 4);
   const backgroundHex = Random.pick(paperColors);
   const background = new THREE.Color(backgroundHex);
 
