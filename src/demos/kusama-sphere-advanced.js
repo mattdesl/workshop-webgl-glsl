@@ -71,7 +71,7 @@ const sketch = ({ context }) => {
   });
 
   const meshes = spheres.map(sphere => {
-    const [color0, color1] = Random.shuffle(palette);
+    const color0 = Random.pick(palette);
 
     // Setup a material
     const material = new THREE.ShaderMaterial({
