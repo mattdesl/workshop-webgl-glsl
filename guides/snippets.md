@@ -19,7 +19,7 @@ void main () {
   vPosition = position;
   vUv = uv;
   vNormal = normal;
-  gl_Position = projecitonMatrix * modelViewMatrix * vec4(position.xyz, 1.0);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position.xyz, 1.0);
 }
 ```
 
