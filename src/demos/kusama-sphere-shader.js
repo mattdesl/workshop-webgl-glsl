@@ -46,8 +46,8 @@ const sketch = ({ context }) => {
       POINT_COUNT: points.length
     },
     uniforms: {
-      color: { value: new THREE.Color("pink") },
-      pointColor: { value: new THREE.Color("tomato") },
+      color: { value: new THREE.Color("tomato") },
+      pointColor: { value: new THREE.Color("white") },
       points: { value: points }
     },
     vertexShader: /*glsl*/ `
