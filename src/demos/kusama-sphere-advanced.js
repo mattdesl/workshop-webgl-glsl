@@ -15,7 +15,7 @@ const settings = {
   // Make the loop animated
   animate: true,
   scaleToView: true,
-  dimensions: [2048, 2048],
+  dimensions: [1440, 900],
   // Get a WebGL canvas rather than 2D
   context: "webgl"
 };

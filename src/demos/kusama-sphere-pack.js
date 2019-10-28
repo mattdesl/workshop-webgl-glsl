@@ -10,7 +10,7 @@ const packSpheres = require("pack-spheres");
 const risoColors = require("riso-colors").map(h => h.hex);
 
 const settings = {
-  dimensions: [1440, 900],
+  dimensions: [2048, 2048],
   // Make the loop animated
   // animate: true,
   // Get a WebGL canvas rather than 2D
