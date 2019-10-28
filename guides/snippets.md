@@ -6,6 +6,64 @@
 
 A few snippets that we may use during the workshop.
 
+## GLSL — Baisc Vertex Shader
+
+This is a "pass-through" vertex shader that just passes down some varyings:
+
+```glsl
+varying vec3 vNormal;
+varying vec2 vUv;
+varying vec3 vPosition;
+
+void main () {
+  vPosition = position;
+  vUv = uv;
+  vNormal = normal;
+  gl_Position = projecitonMatrix * modelViewMatrix * vec4(position.xyz, 1.0);
+}
+```
+
+## GLSL — Basic Fragment Shader
+
+If you're using a Vertex Shader similar to the above, you can then accept `vUv` and other varyings in the fragment shader.
+
+```js
+varying vec2 vUv;
+
+void main () {
+  vec3 fragColor = vec3(vUv.x);
+  gl_FragColor = vec4(fragColor, 1.0);
+}
+```
+
+## GLSL in Three.js
+
+You can write your programs with template strings like so:
+
+```js
+const vertexShader = /* glsl */ `
+  void main () {
+    // ...
+  }
+`;
+
+const fragmentShader = /* glsl */ `
+  void main () {
+    // ...
+  }
+`;
+
+const material = new THREE.ShaderMaterial({
+  uniforms: {
+    // your unifroms
+  },
+  vertexShader,
+  fragmentShader
+});
+```
+
+> :bulb: I'm using [Comment tagged templates](https://marketplace.visualstudio.com/items?itemName=bierner.comment-tagged-templates) and [Shader languages support](https://marketplace.visualstudio.com/items?itemName=slevesque.shader) extensions in VSCode for inline highlighting.
+
 ## GLSL — Rim Light Shader
 
 Here's how we can create rim lighting on a sphere geometry. This goes in the Fragment shader, and expects `vPosition` which is a varying of the position attribute:
