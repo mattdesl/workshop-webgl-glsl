@@ -96,7 +96,7 @@ You can use an output directory so that you don't pollute your Downloads folder,
 canvas-sketch my-sketch.js --output=tmp
 ```
 
-Now you can hit `Cmd + Shit + S` to export into the `tmp/` folder, relative to your sketch directory.
+Now you can hit `Cmd + Shift + S` to export into the `tmp/` folder, relative to your sketch directory.
 
 ### FFMPEG Export
 
