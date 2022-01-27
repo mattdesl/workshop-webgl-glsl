@@ -47,7 +47,7 @@
     "sass": "^1.22.9",
     "screenfull": "^4.2.1",
     "slugify": "^1.3.4",
-    "three": "^0.107.0",
+    "three": "^0.137.0",
     "three-buffer-vertex-data": "^1.1.0",
     "three-tube-wireframe": "^1.1.0",
     "title-case": "^2.1.1",
