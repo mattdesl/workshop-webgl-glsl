@@ -1,0 +1,42 @@
+{
+    "name": "@types/mdx",
+    "version": "2.0.14",
+    "description": "TypeScript definitions for mdx",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/mdx",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Christian Murphy",
+            "githubUsername": "ChristianMurphy",
+            "url": "https://github.com/ChristianMurphy"
+        },
+        {
+            "name": "Remco Haszing",
+            "githubUsername": "remcohaszing",
+            "url": "https://github.com/remcohaszing"
+        },
+        {
+            "name": "Titus Wormer",
+            "githubUsername": "wooorm",
+            "url": "https://github.com/wooorm"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "exports": {
+        ".": "./index.d.ts",
+        "./types": "./types.d.ts",
+        "./types.js": "./types.d.ts",
+        "./package.json": "./package.json"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/mdx"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "peerDependencies": {},
+    "typesPublisherContentHash": "77ad4d32cf8059b9fe8f1cbeeed1a301caad4c95dad418bcfeb1126e5159f2ab",
+    "typeScriptVersion": "5.3"
+}

@@ -1,0 +1,32 @@
+{
+  "name": "uc.micro",
+  "version": "3.0.0",
+  "description": "Micro subset of unicode data files for markdown-it projects.",
+  "repository": "markdown-it/uc.micro",
+  "license": "MIT",
+  "main": "build/index.cjs.js",
+  "module": "build/index.mjs",
+  "types": "build/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "require": "./build/index.cjs.js",
+      "import": "./build/index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "build/"
+  ],
+  "scripts": {
+    "test": "npm run build && npm run type-check && node --test test/**/*.test.*",
+    "build": "rollup -c",
+    "type-check": "tsc --noEmit --strict --target ESNext --module ESNext --moduleResolution Bundler test/types.ts",
+    "prepack": "npm run build"
+  },
+  "devDependencies": {
+    "regenerate-unicode-properties": "10.2.2",
+    "rollup": "^4.62.2",
+    "typescript": "^7.0.2"
+  }
+}

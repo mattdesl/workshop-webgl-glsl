@@ -1,0 +1,24 @@
+{
+  "name": "dom-value",
+  "version": "0.0.0",
+  "description": "Set form input values",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/npm-dom/dom-value.git"
+  },
+  "keywords": [
+    "dom",
+    "browser",
+    "value",
+    "form"
+  ],
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/npm-dom/dom-value/issues"
+  },
+  "homepage": "https://github.com/npm-dom/dom-value",
+  "dependencies": {
+    "component-type": "^1.0.0"
+  }
+}

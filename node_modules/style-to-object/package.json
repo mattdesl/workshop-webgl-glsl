@@ -1,0 +1,81 @@
+{
+  "name": "style-to-object",
+  "version": "2.0.2",
+  "description": "Parse CSS inline style to JavaScript object.",
+  "author": "Mark <mark@remarkablemark.org>",
+  "main": "./cjs/index.js",
+  "module": "./esm/index.mjs",
+  "types": "./cjs/index.d.ts",
+  "exports": {
+    "import": {
+      "types": "./esm/index.d.mts",
+      "default": "./esm/index.mjs"
+    },
+    "require": {
+      "types": "./cjs/index.d.ts",
+      "default": "./cjs/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "clean": "rm -rf cjs coverage dist esm",
+    "lint": "eslint .",
+    "lint:fix": "npm run lint -- --fix",
+    "lint:package": "publint",
+    "lint:tsc": "tsc --project tsconfig.test.json",
+    "prepare": "husky",
+    "prepublishOnly": "run-s clean build lint lint:tsc test",
+    "test": "jest",
+    "test:ci": "CI=true jest --ci --colors --coverage",
+    "test:esm": "npm run build && node --test **/*.test.mjs",
+    "test:watch": "npm run test -- --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/remarkablemark/style-to-object.git"
+  },
+  "bugs": {
+    "url": "https://github.com/remarkablemark/style-to-object/issues"
+  },
+  "keywords": [
+    "style-to-object",
+    "inline",
+    "style",
+    "parser",
+    "css",
+    "object",
+    "pojo"
+  ],
+  "dependencies": {
+    "inline-style-parser": "0.2.9"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "21.2.0",
+    "@commitlint/config-conventional": "21.2.0",
+    "@eslint/js": "10.0.1",
+    "@types/jest": "30.0.0",
+    "@types/node": "26.1.0",
+    "eslint": "10.6.0",
+    "eslint-plugin-prettier": "5.5.6",
+    "eslint-plugin-simple-import-sort": "13.0.0",
+    "globals": "17.7.0",
+    "husky": "9.1.7",
+    "jest": "30.4.2",
+    "lint-staged": "17.0.8",
+    "npm-run-all": "4.1.5",
+    "prettier": "3.9.4",
+    "publint": "0.3.21",
+    "ts-jest": "29.4.11",
+    "ts-node": "10.9.2",
+    "tsdown": "0.22.3",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.62.1"
+  },
+  "files": [
+    "/cjs",
+    "/dist",
+    "/esm",
+    "/src"
+  ],
+  "license": "MIT"
+}

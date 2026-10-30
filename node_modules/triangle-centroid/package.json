@@ -1,0 +1,41 @@
+{
+  "name": "triangle-centroid",
+  "version": "1.0.0",
+  "description": "computes the centroid of a triangle",
+  "main": "index.js",
+  "license": "MIT",
+  "author": {
+    "name": "Matt DesLauriers",
+    "email": "dave.des@gmail.com",
+    "url": "https://github.com/mattdesl"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "faucet": "0.0.1",
+    "tape": "^4.0.0"
+  },
+  "scripts": {
+    "test": "node test.js | faucet"
+  },
+  "keywords": [
+    "triangle",
+    "centroid",
+    "centre",
+    "center",
+    "of",
+    "gravity",
+    "2d",
+    "3d",
+    "point",
+    "tri",
+    "tris"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/mattdesl/triangle-centroid.git"
+  },
+  "homepage": "https://github.com/mattdesl/triangle-centroid",
+  "bugs": {
+    "url": "https://github.com/mattdesl/triangle-centroid/issues"
+  }
+}

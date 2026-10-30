@@ -1,0 +1,263 @@
+import ChainMap from './ChainMap.js';
+import RenderObject from './RenderObject.js';
+
+const _chainKeys = [ null, null, null, null ];
+const _overrideChainKeys = [ null, null, null, null, null ];
+
+/**
+ * This module manages the render objects of the renderer.
+ *
+ * @private
+ */
+class RenderObjects {
+
+	/**
+	 * Constructs a new render object management component.
+	 *
+	 * @param {Renderer} renderer - The renderer.
+	 * @param {NodeManager} nodes - Renderer component for managing nodes related logic.
+	 * @param {Geometries} geometries - Renderer component for managing geometries.
+	 * @param {Pipelines} pipelines - Renderer component for managing pipelines.
+	 * @param {Bindings} bindings - Renderer component for managing bindings.
+	 * @param {Info} info - Renderer component for managing metrics and monitoring data.
+	 */
+	constructor( renderer, nodes, geometries, pipelines, bindings, info ) {
+
+		/**
+		 * The renderer.
+		 *
+		 * @type {Renderer}
+		 */
+		this.renderer = renderer;
+
+		/**
+		 * Renderer component for managing nodes related logic.
+		 *
+		 * @type {NodeManager}
+		 */
+		this.nodes = nodes;
+
+		/**
+		 * Renderer component for managing geometries.
+		 *
+		 * @type {Geometries}
+		 */
+		this.geometries = geometries;
+
+		/**
+		 * Renderer component for managing pipelines.
+		 *
+		 * @type {Pipelines}
+		 */
+		this.pipelines = pipelines;
+
+		/**
+		 * Renderer component for managing bindings.
+		 *
+		 * @type {Bindings}
+		 */
+		this.bindings = bindings;
+
+		/**
+		 * Renderer component for managing metrics and monitoring data.
+		 *
+		 * @type {Info}
+		 */
+		this.info = info;
+
+		/**
+		 * A dictionary that manages render contexts in chain maps
+		 * for each pass ID.
+		 *
+		 * @private
+		 * @type {Object<string,ChainMap>}
+		 */
+		this._chainMaps = {};
+
+		/**
+		 * Stores all render objects created by this component.
+		 *
+		 * @private
+		 * @type {Set<RenderObject>}
+		 */
+		this._renderObjects = new Set();
+
+	}
+
+	/**
+	 * Returns a render object for the given object and state data.
+	 *
+	 * @param {Object3D} object - The 3D object.
+	 * @param {Material} material - The 3D object's material.
+	 * @param {Scene} scene - The scene the 3D object belongs to.
+	 * @param {Camera} camera - The camera the 3D object should be rendered with.
+	 * @param {LightsNode} lightsNode - The lights node.
+	 * @param {RenderContext} renderContext - The render context.
+	 * @param {ClippingContext} clippingContext - The clipping context.
+	 * @param {string} [passId] - An optional ID for identifying the pass.
+	 * @return {RenderObject} The render object.
+	 */
+	get( object, material, scene, camera, lightsNode, renderContext, clippingContext, passId ) {
+
+		const chainMap = this.getChainMap( passId );
+
+		const sourceMaterial = this.renderer._currentSourceMaterial;
+		const sourceMaterialVersion = sourceMaterial !== null ? sourceMaterial.version : 0;
+
+		// set chain keys
+
+		const chainKeys = sourceMaterial !== null ? _overrideChainKeys : _chainKeys;
+
+		chainKeys[ 0 ] = object;
+		chainKeys[ 1 ] = material;
+		chainKeys[ 2 ] = renderContext;
+		chainKeys[ 3 ] = lightsNode;
+
+		if ( sourceMaterial !== null ) chainKeys[ 4 ] = sourceMaterial;
+
+		//
+
+		let renderObject = chainMap.get( chainKeys );
+
+		if ( renderObject === undefined ) {
+
+			renderObject = this.createRenderObject( this.nodes, this.geometries, this.renderer, object, material, scene, camera, lightsNode, renderContext, clippingContext, passId );
+
+			chainMap.set( chainKeys, renderObject );
+
+		} else {
+
+			let force = false;
+
+			// update references
+
+			renderObject.camera = camera;
+
+			// clipping and geometry updates
+
+			renderObject.updateClipping( clippingContext );
+
+			if ( renderObject.needsGeometryUpdate ) {
+
+				renderObject.setGeometry( object.geometry );
+
+				// structural change, force into rebuild
+
+				if ( renderObject.initialGeometryCacheKey !== renderObject.getGeometryCacheKey() ) {
+
+					force = true;
+
+				}
+
+			}
+
+			// check if a new render object (rebuild) is required
+
+			if ( renderObject.version !== material.version || renderObject.sourceMaterialVersion !== sourceMaterialVersion || renderObject.needsUpdate || force ) {
+
+				if ( renderObject.initialCacheKey !== renderObject.getCacheKey() ) {
+
+					renderObject.dispose();
+
+					renderObject = this.get( object, material, scene, camera, lightsNode, renderContext, clippingContext, passId );
+
+				} else {
+
+					renderObject.version = material.version;
+					renderObject.sourceMaterialVersion = sourceMaterialVersion;
+
+				}
+
+			}
+
+		}
+
+		// reset chain array
+
+		chainKeys[ 0 ] = null;
+		chainKeys[ 1 ] = null;
+		chainKeys[ 2 ] = null;
+		chainKeys[ 3 ] = null;
+
+		if ( sourceMaterial !== null ) chainKeys[ 4 ] = null;
+
+		//
+
+		return renderObject;
+
+	}
+
+	/**
+	 * Returns a chain map for the given pass ID.
+	 *
+	 * @param {string} [passId='default'] - The pass ID.
+	 * @return {ChainMap} The chain map.
+	 */
+	getChainMap( passId = 'default' ) {
+
+		return this._chainMaps[ passId ] || ( this._chainMaps[ passId ] = new ChainMap() );
+
+	}
+
+	/**
+	 * Frees internal resources.
+	 */
+	dispose() {
+
+		for ( const renderObject of this._renderObjects ) {
+
+			renderObject.dispose();
+
+		}
+
+		this._renderObjects.clear();
+
+		this._chainMaps = {};
+
+	}
+
+	/**
+	 * Factory method for creating render objects with the given list of parameters.
+	 *
+	 * @param {NodeManager} nodes - Renderer component for managing nodes related logic.
+	 * @param {Geometries} geometries - Renderer component for managing geometries.
+	 * @param {Renderer} renderer - The renderer.
+	 * @param {Object3D} object - The 3D object.
+	 * @param {Material} material - The object's material.
+	 * @param {Scene} scene - The scene the 3D object belongs to.
+	 * @param {Camera} camera - The camera the object should be rendered with.
+	 * @param {LightsNode} lightsNode - The lights node.
+	 * @param {RenderContext} renderContext - The render context.
+	 * @param {ClippingContext} clippingContext - The clipping context.
+	 * @param {string} [passId] - An optional ID for identifying the pass.
+	 * @return {RenderObject} The render object.
+	 */
+	createRenderObject( nodes, geometries, renderer, object, material, scene, camera, lightsNode, renderContext, clippingContext, passId ) {
+
+		const chainMap = this.getChainMap( passId );
+
+		const renderObject = new RenderObject( nodes, geometries, renderer, object, material, scene, camera, lightsNode, renderContext, clippingContext );
+
+		renderObject.onDispose = () => {
+
+			this.geometries.deleteVertexState( renderObject );
+			this.pipelines.delete( renderObject );
+			this.bindings.deleteForRender( renderObject );
+			this.nodes.delete( renderObject );
+
+			chainMap.delete( renderObject.getChainArray() );
+
+			this._renderObjects.delete( renderObject );
+
+		};
+
+		this._renderObjects.add( renderObject );
+
+		return renderObject;
+
+	}
+
+
+}
+
+export default RenderObjects;

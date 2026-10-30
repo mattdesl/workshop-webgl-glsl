@@ -1,0 +1,41 @@
+{
+  "name": "get-canvas-context",
+  "version": "1.0.2",
+  "description": "gets canvas context by name",
+  "main": "index.js",
+  "license": "MIT",
+  "author": {
+    "name": "Matt DesLauriers",
+    "email": "dave.des@gmail.com",
+    "url": "https://github.com/mattdesl"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "browserify": "^10.2.4",
+    "faucet": "0.0.1",
+    "smokestack": "^3.3.0",
+    "tape": "^4.0.0"
+  },
+  "scripts": {
+    "test": "browserify test.js | smokestack | faucet"
+  },
+  "keywords": [
+    "canvas",
+    "context",
+    "2d",
+    "webgl",
+    "experimental",
+    "webgl2",
+    "3d",
+    "gl",
+    "html5"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Jam3/get-canvas-context.git"
+  },
+  "homepage": "https://github.com/Jam3/get-canvas-context",
+  "bugs": {
+    "url": "https://github.com/Jam3/get-canvas-context/issues"
+  }
+}

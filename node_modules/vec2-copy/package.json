@@ -1,0 +1,34 @@
+{
+  "name": "vec2-copy",
+  "version": "1.0.0",
+  "description": "copies a 2-dimensional vector (array)",
+  "main": "index.js",
+  "license": "MIT",
+  "author": {
+    "name": "Matt DesLauriers",
+    "email": "dave.des@gmail.com",
+    "url": "https://github.com/mattdesl"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "tape": "^3.0.1"
+  },
+  "scripts": {
+    "test": "node test.js"
+  },
+  "keywords": [
+    "copy",
+    "vec2",
+    "gl-mat4",
+    "gl-vec2",
+    "gl-matrix"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/mattdesl/vec2-copy.git"
+  },
+  "homepage": "https://github.com/mattdesl/vec2-copy",
+  "bugs": {
+    "url": "https://github.com/mattdesl/vec2-copy/issues"
+  }
+}

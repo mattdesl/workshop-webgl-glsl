@@ -1,0 +1,45 @@
+{
+  "name": "adaptive-bezier-curve",
+  "version": "1.0.3",
+  "description": "adaptive and scalable 2D bezier curves",
+  "main": "index.js",
+  "license": "BSD-3-Clause",
+  "author": {
+    "name": "Matt DesLauriers",
+    "email": "dave.des@gmail.com",
+    "url": "https://github.com/mattdesl"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "canvas-testbed": "^1.0.2",
+    "tape": "^3.0.1"
+  },
+  "scripts": {
+    "test": "node test.js"
+  },
+  "keywords": [
+    "bezier",
+    "quadratic",
+    "curve",
+    "adaptive",
+    "approximate",
+    "quadraticCurveTo",
+    "bezierCurveTo",
+    "line",
+    "path",
+    "rendering",
+    "canvas",
+    "draw",
+    "drawing",
+    "webgl",
+    "segments"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/mattdesl/adaptive-bezier-curve.git"
+  },
+  "homepage": "https://github.com/mattdesl/adaptive-bezier-curve",
+  "bugs": {
+    "url": "https://github.com/mattdesl/adaptive-bezier-curve/issues"
+  }
+}

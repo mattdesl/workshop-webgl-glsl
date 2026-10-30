@@ -1,0 +1,54 @@
+{
+  "name": "svg-path-contours",
+  "version": "2.0.0",
+  "description": "gets 2D contours from an SVG path",
+  "main": "index.js",
+  "license": "MIT",
+  "author": {
+    "name": "Matt DesLauriers",
+    "email": "dave.des@gmail.com",
+    "url": "https://github.com/mattdesl"
+  },
+  "dependencies": {
+    "abs-svg-path": "^0.1.1",
+    "adaptive-bezier-curve": "^1.0.3",
+    "normalize-svg-path": "^0.1.0",
+    "vec2-copy": "^1.0.0"
+  },
+  "devDependencies": {
+    "canvas-testbed": "^1.0.2",
+    "extract-svg-path": "^1.0.0",
+    "normalize-path-scale": "^1.0.1",
+    "parse-svg-path": "^0.1.1",
+    "simplify-path": "^1.0.0",
+    "tape": "^3.0.1",
+    "triangulate-contours": "^1.0.1"
+  },
+  "scripts": {
+    "test": "node test.js"
+  },
+  "keywords": [
+    "svg",
+    "path",
+    "adaptive",
+    "curve",
+    "bezier",
+    "quadratic",
+    "cubic",
+    "vector",
+    "points",
+    "point",
+    "discrete",
+    "step",
+    "steps",
+    "approximate"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/mattdesl/svg-path-contours.git"
+  },
+  "homepage": "https://github.com/mattdesl/svg-path-contours",
+  "bugs": {
+    "url": "https://github.com/mattdesl/svg-path-contours/issues"
+  }
+}

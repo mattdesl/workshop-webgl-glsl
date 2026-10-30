@@ -1,0 +1,16 @@
+{
+  "name": "preact-hooks",
+  "private": true,
+  "description": "Hook addon for Preact",
+  "main": "dist/hooks.mjs",
+  "module": "dist/hooks.mjs",
+  "source": "src/index.js",
+  "types": "src/index.d.ts",
+  "license": "MIT",
+  "mangle": {
+    "regex": "^_"
+  },
+  "peerDependencies": {
+    "preact": "^10.0.0"
+  }
+}

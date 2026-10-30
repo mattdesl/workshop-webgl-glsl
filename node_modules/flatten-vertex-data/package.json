@@ -1,0 +1,48 @@
+{
+  "name": "flatten-vertex-data",
+  "version": "1.0.2",
+  "description": "flattens nested vertex data into a typed array",
+  "main": "index.js",
+  "license": "MIT",
+  "author": {
+    "name": "Matt DesLauriers",
+    "email": "dave.des@gmail.com",
+    "url": "https://github.com/mattdesl"
+  },
+  "dependencies": {
+    "dtype": "^2.0.0"
+  },
+  "devDependencies": {
+    "faucet": "0.0.1",
+    "standard": "^5.3.1",
+    "tape": "^4.9.0"
+  },
+  "scripts": {
+    "test": "standard && node test.js | faucet"
+  },
+  "keywords": [
+    "dtype",
+    "flat",
+    "flatten",
+    "pack",
+    "array",
+    "type",
+    "typed",
+    "typedarray",
+    "vert",
+    "vertex",
+    "webgl",
+    "gl",
+    "glsl",
+    "shader",
+    "buffer"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/glo-js/flatten-vertex-data.git"
+  },
+  "homepage": "https://github.com/glo-js/flatten-vertex-data",
+  "bugs": {
+    "url": "https://github.com/glo-js/flatten-vertex-data/issues"
+  }
+}

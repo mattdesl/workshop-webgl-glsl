@@ -1,0 +1,28 @@
+{
+  "name": "right-now",
+  "version": "1.0.0",
+  "description": "Get the quickest, most high-resolution timestamp possible in node or the browser",
+  "main": "index.js",
+  "browser": "browser.js",
+  "scripts": {
+    "test": "say sorry"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/hughsk/right-now.git"
+  },
+  "keywords": [
+    "time",
+    "high",
+    "resolution",
+    "fast",
+    "quick",
+    "nanosecond",
+    "millsecond",
+    "performance",
+    "now"
+  ],
+  "author": "Hugh Kennedy <hughskennedy@gmail.com> (http://hughskennedy.com/)",
+  "license": "MIT",
+  "readmeFilename": "README.md"
+}

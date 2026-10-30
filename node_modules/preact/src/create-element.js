@@ -1,0 +1,122 @@
+import { assign, slice } from './util';
+import options from './options';
+import { NULL, UNDEFINED, VNODE_MARKER } from './constants';
+
+let vnodeId = 0;
+
+/**
+ * Create an virtual node (used for JSX)
+ * @param {import('./internal').VNode["type"]} type The node name or Component constructor for this
+ * virtual node
+ * @param {object | null | undefined} [props] The properties of the virtual node
+ * @param {Array<import('.').ComponentChildren>} [children] The children of the
+ * virtual node
+ * @returns {import('./internal').VNode}
+ */
+export function createElement(type, props, children) {
+	let normalizedProps = {},
+		key,
+		ref,
+		i,
+		length = arguments.length;
+	for (i in props) {
+		if (i == 'key') key = props[i];
+		else if (i == 'ref' && typeof type != 'function') ref = props[i];
+		else normalizedProps[i] = props[i];
+	}
+
+	if (length > 2) {
+		normalizedProps.children = length > 3 ? slice.call(arguments, 2) : children;
+	}
+
+	return createVNode(type, normalizedProps, key, ref, NULL);
+}
+
+/**
+ * Clones the given VNode, optionally adding attributes/props and replacing its
+ * children.
+ * @param {import('./internal').VNode} vnode The virtual DOM element to clone
+ * @param {object} props Attributes/props to add when cloning
+ * @param {Array<import('./internal').ComponentChildren>} children Any additional arguments will be used
+ * as replacement children.
+ * @returns {import('./internal').VNode}
+ */
+export function cloneElement(vnode, props, children) {
+	let normalizedProps = assign({}, vnode.props),
+		key,
+		ref,
+		i,
+		length = arguments.length;
+
+	for (i in props) {
+		if (i == 'key') key = props[i];
+		else if (i == 'ref' && typeof vnode.type != 'function') ref = props[i];
+		else normalizedProps[i] = props[i];
+	}
+
+	if (length > 2) {
+		normalizedProps.children = length > 3 ? slice.call(arguments, 2) : children;
+	}
+
+	return createVNode(
+		vnode.type,
+		normalizedProps,
+		key !== UNDEFINED ? key : vnode.key,
+		ref !== UNDEFINED ? ref : vnode.ref,
+		NULL
+	);
+}
+
+/**
+ * Create a VNode (used internally by Preact)
+ * @param {import('./internal').VNode["type"]} type The node name or Component
+ * Constructor for this virtual node
+ * @param {object | string | number | null} props The properties of this virtual node.
+ * If this virtual node represents a text node, this is the text of the node (string or number).
+ * @param {string | number | null} key The key for this virtual node, used when
+ * diffing it against its children
+ * @param {import('./internal').VNode["ref"]} ref The ref property that will
+ * receive a reference to its created child
+ * @returns {import('./internal').VNode}
+ */
+export function createVNode(type, props, key, ref, original) {
+	// V8 seems to be better at detecting type shapes if the object is allocated from the same call site
+	// Do not inline into createElement and coerceToVNode!
+	/** @type {import('./internal').VNode} */
+	const vnode = {
+		type,
+		props,
+		key,
+		ref,
+		_children: NULL,
+		_parent: NULL,
+		_depth: 0,
+		_dom: NULL,
+		_component: NULL,
+		constructor: VNODE_MARKER,
+		_original: original || ++vnodeId,
+		_index: -1,
+		_flags: 0
+	};
+
+	// Only invoke the vnode hook if this was *not* a direct copy:
+	if (!original && options.vnode) options.vnode(vnode);
+
+	return vnode;
+}
+
+export function createRef() {
+	return { current: NULL };
+}
+
+export function Fragment(props) {
+	return props.children;
+}
+
+/**
+ * Check if a the argument is a valid Preact VNode.
+ * @param {*} vnode
+ * @returns {vnode is VNode}
+ */
+export const isValidElement = vnode =>
+	vnode != NULL && vnode.constructor === VNODE_MARKER;

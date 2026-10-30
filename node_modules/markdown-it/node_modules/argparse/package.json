@@ -1,0 +1,38 @@
+{
+  "name": "argparse",
+  "description": "CLI arguments parser. Native port of python's argparse.",
+  "version": "3.0.4",
+  "keywords": [
+    "cli",
+    "parser",
+    "argparse",
+    "option",
+    "args"
+  ],
+  "main": "lib/argparse.js",
+  "types": "lib/argparse.d.ts",
+  "files": [
+    "lib/"
+  ],
+  "license": "PSF-2.0",
+  "repository": "nodeca/argparse",
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/puzrin"
+    },
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/nodeca"
+    }
+  ],
+  "scripts": {
+    "lint": "eslint .",
+    "test": "npm run lint && node --test",
+    "coverage": "c8 --reporter html npm test"
+  },
+  "devDependencies": {
+    "c8": "^11.0.0",
+    "neostandard": "^0.13.0"
+  }
+}

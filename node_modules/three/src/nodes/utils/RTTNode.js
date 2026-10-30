@@ -1,0 +1,372 @@
+import { nodeObject } from '../tsl/TSLCore.js';
+import TextureNode from '../accessors/TextureNode.js';
+import { NodeUpdateType } from '../core/constants.js';
+import { uv } from '../accessors/UV.js';
+import { context } from '../core/ContextNode.js';
+import NodeMaterial from '../../materials/nodes/NodeMaterial.js';
+import QuadMesh from '../../renderers/common/QuadMesh.js';
+
+import { RenderTarget } from '../../core/RenderTarget.js';
+import { Vector2 } from '../../math/Vector2.js';
+import { HalfFloatType } from '../../constants.js';
+import { error } from '../../utils.js';
+import { resetRendererState, restoreRendererState } from '../../renderers/common/RendererUtils.js';
+
+const _size = /*@__PURE__*/ new Vector2();
+
+/**
+ * `RTTNode` takes another node and uses it with a `QuadMesh` to render into a texture (RTT).
+ * This module is especially relevant in context of post processing where certain nodes require
+ * texture input for their effects. With the helper function `convertToTexture()` which is based
+ * on this module, the node system can automatically ensure texture input if required.
+ *
+ * @augments TextureNode
+ */
+class RTTNode extends TextureNode {
+
+	static get type() {
+
+		return 'RTTNode';
+
+	}
+
+	/**
+	 * Constructs a new RTT node.
+	 *
+	 * @param {Node} node - The node to render a texture with.
+	 * @param {?number} [width=null] - The width of the internal render target. If no width is applied, the render target is automatically resized.
+	 * @param {?number} [height=null] - The height of the internal render target.
+	 * @param {Object} [options={}] - The options for the internal render target.
+	 * @param {number} [options.type=HalfFloatType] - The texture type.
+	 * @param {boolean} [options.autoUpdate=true] - Whether the texture should automatically be updated or not.
+	 * @param {number} [options.resolutionScale=1] - The resolution scale.
+	 */
+	constructor( node, width = null, height = null, options = {} ) {
+
+		const {
+			autoUpdate = true,
+			resolutionScale = 1
+		} = options;
+
+		const renderTarget = new RenderTarget( width ?? 1, height ?? 1, { type: HalfFloatType, ...options } );
+
+		super( renderTarget.texture, uv() );
+
+		/**
+		 * This flag can be used for type testing.
+		 *
+		 * @type {boolean}
+		 * @readonly
+		 * @default true
+		 */
+		this.isRTTNode = true;
+
+		/**
+		 * The node to render a texture with.
+		 *
+		 * @type {Node}
+		 */
+		this.node = node;
+
+		/**
+		 * The width of the internal render target.
+		 * If not width is applied, the render target is automatically resized.
+		 *
+		 * @type {?number}
+		 * @default null
+		 */
+		this.width = width;
+
+		/**
+		 * The height of the internal render target.
+		 *
+		 * @type {?number}
+		 * @default null
+		 */
+		this.height = height;
+
+		/**
+		 * The render target
+		 *
+		 * @type {RenderTarget}
+		 */
+		this.renderTarget = renderTarget;
+
+		/**
+		 * Whether the texture requires an update or not.
+		 *
+		 * @type {boolean}
+		 * @default true
+		 */
+		this.textureNeedsUpdate = true;
+
+		/**
+		 * Whether the texture should automatically be updated or not.
+		 *
+		 * @type {boolean}
+		 * @default true
+		 */
+		this.autoUpdate = autoUpdate;
+
+		/**
+		 * The resolution scale
+		 *
+		 * @private
+		 * @type {number}
+		 * @default 1
+		 */
+		this._resolutionScale = resolutionScale;
+
+		/**
+		 * The internal quad mesh for RTT.
+		 *
+		 * @private
+		 * @type {QuadMesh}
+		 */
+		this._quadMesh = new QuadMesh( new NodeMaterial() );
+
+		/**
+		 * The renderer state saved and restored around the RTT render.
+		 * Kept per instance because nested RTT nodes must not share it.
+		 *
+		 * @private
+		 * @type {Object}
+		 */
+		this._rendererState = {};
+
+		/**
+		 * The `updateBeforeType` is set to `NodeUpdateType.FRAME` since the node updates
+		 * the texture once per frame in its {@link RTTNode#updateBefore} method.
+		 *
+		 * @type {string}
+		 * @default 'frame'
+		 */
+		this.updateBeforeType = NodeUpdateType.FRAME;
+
+	}
+
+	/**
+	 * Whether the internal render target should automatically be resized or not.
+	 *
+	 * @type {boolean}
+	 * @readonly
+	 * @default true
+	 */
+	get autoResize() {
+
+		return this.width === null;
+
+	}
+
+	setup( builder ) {
+
+		this._quadMesh.material.contextNode = context( builder.getSharedContext() );
+		this._quadMesh.material.fragmentNode = this.node;
+		this._quadMesh.material.name = 'RTT';
+		this._quadMesh.material.needsUpdate = true;
+
+		return super.setup( builder );
+
+	}
+
+	/**
+	 * Sets the size of the internal render target.
+	 *
+	 * @param {number} width - The width to set.
+	 * @param {number} height - The height to set.
+	 */
+	setSize( width, height ) {
+
+		const effectiveWidth = Math.floor( width * this._resolutionScale );
+		const effectiveHeight = Math.floor( height * this._resolutionScale );
+
+		this.renderTarget.setSize( effectiveWidth, effectiveHeight );
+
+		this.textureNeedsUpdate = true;
+
+	}
+
+	/**
+	 * Sets the resolution scale.
+	 * The resolution scale is a factor that is multiplied with the renderer's width and height.
+	 *
+	 * @param {number} resolutionScale - The resolution scale to set. A value of `1` means full resolution.
+	 * @returns {RTTNode} A reference to this node.
+	 */
+	setResolutionScale( resolutionScale ) {
+
+		this._resolutionScale = resolutionScale;
+
+		if ( this.autoResize === false ) {
+
+			this.setSize( this.width, this.height );
+
+		}
+
+		return this;
+
+	}
+
+	/**
+	 * Gets the resolution scale.
+	 *
+	 * @returns {number} The resolution scale.
+	 */
+	getResolutionScale() {
+
+		return this._resolutionScale;
+
+	}
+
+	/**
+	 * Overwritten since the value is defined by the internal render target.
+	 *
+	 * @param {Texture} value - The texture value.
+	 */
+	set value( value ) {
+
+		if ( this.renderTarget && value !== this.renderTarget.texture ) {
+
+			error( 'TSL: "rtt()" does not allow overwriting the value.' );
+
+		}
+
+	}
+
+	/**
+	 * The texture of the internal render target.
+	 *
+	 * @type {Texture}
+	 */
+	get value() {
+
+		return this.renderTarget ? this.renderTarget.texture : null;
+
+	}
+
+	/**
+	 * Renders the node's output into the internal render target before the main render pass.
+	 * Handles automatic resizing of the render target when `autoResize` is enabled,
+	 * and skips rendering if neither `textureNeedsUpdate` nor `autoUpdate` is true.
+	 *
+	 * @param {NodeFrame} frame - The current node frame, providing access to the renderer and other frame data.
+	 */
+	updateBefore( frame ) {
+
+		const { renderer } = frame;
+
+		if ( this.textureNeedsUpdate === false && this.autoUpdate === false ) return;
+
+		this.textureNeedsUpdate = false;
+
+		//
+
+		if ( this.autoResize === true ) {
+
+			const size = renderer.getDrawingBufferSize( _size );
+
+			const effectiveWidth = Math.floor( size.width * this._resolutionScale );
+			const effectiveHeight = Math.floor( size.height * this._resolutionScale );
+
+			if ( effectiveWidth !== this.renderTarget.width || effectiveHeight !== this.renderTarget.height ) {
+
+				this.renderTarget.setSize( effectiveWidth, effectiveHeight );
+
+				this.textureNeedsUpdate = true;
+
+			}
+
+		}
+
+		//
+
+		let name = 'RTT';
+
+		const callName = this.name || this.node.name;
+
+		if ( callName ) {
+
+			name = callName + ' [ ' + name + ' ]';
+
+		}
+
+		this._quadMesh.name = name;
+
+		//
+
+		resetRendererState( renderer, this._rendererState );
+
+		renderer.setClearColor( this._rendererState.clearColor, this._rendererState.clearAlpha ); // keep clear color/alpha
+
+		renderer.setRenderTarget( this.renderTarget );
+
+		this._quadMesh.render( renderer );
+
+		restoreRendererState( renderer, this._rendererState );
+
+	}
+
+	clone() {
+
+		const newNode = new TextureNode( this.value, this.uvNode, this.levelNode );
+		newNode.sampler = this.sampler;
+		newNode.referenceNode = this;
+
+		return newNode;
+
+	}
+
+	/**
+	 * Frees internal resources. Should be called when the node is no longer in use.
+	 */
+	dispose() {
+
+		this.renderTarget.dispose();
+		this._quadMesh.material.dispose();
+
+		super.dispose();
+
+	}
+
+}
+
+export default RTTNode;
+
+/**
+ * TSL function for creating a RTT node.
+ *
+ * @tsl
+ * @function
+ * @param {Node} node - The node to render a texture with.
+ * @param {?number} [width=null] - The width of the internal render target. If no width is applied, the render target is automatically resized.
+ * @param {?number} [height=null] - The height of the internal render target.
+ * @param {Object} [options={}] - The options for the internal render target.
+ * @param {number} [options.type=HalfFloatType] - The texture type.
+ * @param {boolean} [options.autoUpdate=true] - Whether the texture should automatically be updated or not.
+ * @param {number} [options.resolutionScale=1] - The resolution scale.
+ * @returns {RTTNode}
+ */
+export const rtt = ( node, ...params ) => new RTTNode( nodeObject( node ), ...params );
+
+/**
+ * TSL function for converting nodes to textures nodes.
+ *
+ * @tsl
+ * @function
+ * @param {Node} node - The node to render a texture with.
+ * @param {?number} [width=null] - The width of the internal render target. If no width is applied, the render target is automatically resized.
+ * @param {?number} [height=null] - The height of the internal render target.
+ * @param {Object} [options={}] - The options for the internal render target.
+ * @param {number} [options.type=HalfFloatType] - The texture type.
+ * @param {boolean} [options.autoUpdate=true] - Whether the texture should automatically be updated or not.
+ * @param {number} [options.resolutionScale=1] - The resolution scale.
+ * @returns {RTTNode}
+ */
+export const convertToTexture = ( node, ...params ) => {
+
+	if ( node.isSampleNode || node.isTextureNode ) return node;
+	if ( node.isPassNode ) return node.getTextureNode();
+
+	return rtt( node, ...params );
+
+};

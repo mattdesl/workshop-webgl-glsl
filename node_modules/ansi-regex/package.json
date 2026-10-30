@@ -1,0 +1,78 @@
+{
+	"name": "ansi-regex",
+	"version": "6.5.0",
+	"description": "Regular expression for matching ANSI escape codes",
+	"license": "MIT",
+	"repository": "chalk/ansi-regex",
+	"funding": "https://github.com/chalk/ansi-regex?sponsor=1",
+	"author": "Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)",
+	"type": "module",
+	"exports": {
+		"types": "./index.d.ts",
+		"default": "./index.js"
+	},
+	"types": "./index.d.ts",
+	"sideEffects": false,
+	"engines": {
+		"node": ">=12"
+	},
+	"scripts": {
+		"test": "xo && node --test",
+		"view-supported": "node fixtures/view-codes.js"
+	},
+	"files": [
+		"index.js",
+		"index.d.ts"
+	],
+	"keywords": [
+		"ansi",
+		"styles",
+		"color",
+		"colour",
+		"colors",
+		"terminal",
+		"console",
+		"cli",
+		"string",
+		"tty",
+		"escape",
+		"formatting",
+		"rgb",
+		"256",
+		"shell",
+		"xterm",
+		"command-line",
+		"text",
+		"regex",
+		"regexp",
+		"re",
+		"match",
+		"test",
+		"find",
+		"pattern"
+	],
+	"devDependencies": {
+		"ansi-escapes": "^7.3.0",
+		"xo": "^5.0.1"
+	},
+	"xo": [
+		{
+			"rules": {
+				"node-test/no-conditional-assertion": "off",
+				"regexp/no-control-character": "off",
+				"regexp/no-useless-non-capturing-group": "off",
+				"regexp/prefer-regexp-exec": "off",
+				"regexp/sort-character-class-elements": "off",
+				"unicorn/prefer-https": "off"
+			}
+		},
+		{
+			"files": [
+				"package.json"
+			],
+			"rules": {
+				"package-json/prefer-exports": "off"
+			}
+		}
+	]
+}

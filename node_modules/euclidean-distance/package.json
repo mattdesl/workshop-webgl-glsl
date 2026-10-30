@@ -1,0 +1,36 @@
+{
+  "name": "euclidean-distance",
+  "version": "1.0.0",
+  "license": "MIT",
+  "description": "Calculate the Euclidean distance been two points in 2D/3D/nD space.",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zeke/euclidean-distance"
+  },
+  "keywords": [
+    "distance",
+    "space",
+    "3d",
+    "2d",
+    "math",
+    "euclid",
+    "color",
+    "Lab",
+    "L*a*b*",
+    "Delta-E",
+    "dE",
+    "visualization",
+    "browser"
+  ],
+  "author": "zeke",
+  "bugs": {
+    "url": "https://github.com/zeke/euclidean-distance/issues"
+  },
+  "devDependencies": {
+    "mocha": "^2.3.4"
+  }
+}

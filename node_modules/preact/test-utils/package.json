@@ -1,0 +1,16 @@
+{
+  "name": "test-utils",
+  "private": true,
+  "description": "Test-utils for Preact",
+  "main": "dist/testUtils.mjs",
+  "module": "dist/testUtils.mjs",
+  "source": "src/index.js",
+  "types": "src/index.d.ts",
+  "license": "MIT",
+  "mangle": {
+    "regex": "^_"
+  },
+  "peerDependencies": {
+    "preact": "^10.0.0"
+  }
+}

@@ -1,0 +1,1350 @@
+import {
+	Texture,
+	ImageLoader,
+	ImageBitmapLoader,
+	LoaderUtils,
+	Matrix3,
+	Matrix4,
+	MeshBasicNodeMaterial,
+	MeshPhysicalNodeMaterial,
+} from 'three/webgpu';
+
+import {
+	float,
+	texture,
+	int,
+	bool,
+	sub,
+	vec2,
+	vec3,
+	vec4,
+	color,
+	uv,
+	mat3,
+	mat4,
+	element,
+	mx_transform_uv,
+	mx_srgb_texture_to_lin_rec709,
+	positionLocal,
+	positionWorld,
+	normalLocal,
+	normalWorld,
+	tangentLocal,
+	tangentWorld,
+	bitangentLocal,
+	bitangentWorld,
+} from 'three/tsl';
+
+import { MaterialXLogCodes } from './MaterialXLog.js';
+import { createMaterialXCompileRegistry, compileNodeFromRegistry } from './compile/MaterialXCompileRegistry.js';
+import { parseMaterialXNodeTree, parseMaterialXText } from './parse/MaterialXParser.js';
+import { getSurfaceMapper } from './MaterialXSurfaceMappings.js';
+import { MtlXLibrary } from './MaterialXNodeLibrary.js';
+import { resolveNodeDef } from './MaterialXNodeDefs.js';
+import { mxHextileCoord, mxHextileComputeBlendWeights } from './MaterialXHextile.js';
+import { resolveTextureAddressMode, TEXTURE_ADDRESS_MODE_WRAPPING, toBooleanNode } from './MaterialXUtils.js';
+
+const colorSpaceLib = {
+	mx_srgb_texture_to_lin_rec709,
+};
+
+const DEFAULT_DOCUMENT_COLOR_SPACE = 'lin_rec709';
+const IDENTITY_MAT3_VALUES = [ 1, 0, 0, 0, 1, 0, 0, 0, 1 ];
+const IDENTITY_MAT4_VALUES = [ 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 ];
+const MATRIX_INVERSE_EPSILON = 1e-8;
+const COMPILE_REGISTRY = createMaterialXCompileRegistry();
+const NODE_CLASS_BY_TYPE = {
+	integer: int,
+	float,
+	vector2: vec2,
+	vector3: vec3,
+	vector4: vec4,
+	color4: vec4,
+	color3: color,
+	boolean: null,
+	matrix33: mat3,
+	matrix44: mat4,
+};
+// Geometric properties a nodedef input can default to via `defaultgeomprop`.
+const GEOMPROP_NODES = {
+	Pobject: positionLocal,
+	Pworld: positionWorld,
+	Nobject: normalLocal,
+	Nworld: normalWorld,
+	Tobject: tangentLocal,
+	Tworld: tangentWorld,
+	Bobject: bitangentLocal,
+	Bworld: bitangentWorld,
+	Vworld: MtlXLibrary.viewdirection.nodeFunc( 'world' ),
+};
+
+function parseValueVector( value ) {
+
+	const vector = [];
+	for ( const val of value.split( /[,|\s]/ ) ) {
+
+		if ( val !== '' ) vector.push( Number( val.trim() ) );
+
+	}
+
+	return vector;
+
+}
+
+function createMatrixNode( size, vector ) {
+
+	const expectedLength = size * size;
+	if ( vector.length !== expectedLength ) return null;
+
+	// MaterialX matrix values are serialized in column-major order.
+	// Reorder to row-major before constructing TSL matrix nodes so
+	// transformmatrix semantics match MaterialXJS and MaterialXView.
+	const reordered = [];
+	for ( let row = 0; row < size; row += 1 ) {
+
+		for ( let column = 0; column < size; column += 1 ) {
+
+			reordered.push( vector[ column * size + row ] );
+
+		}
+
+	}
+
+	return size === 3 ? mat3( ...reordered ) : mat4( ...reordered );
+
+}
+
+// Empty strings are valid string defaults, but an empty filename means "no texture".
+function hasDefaultValue( input ) {
+
+	if ( input.value === undefined ) return false;
+	return input.value !== '' || input.type === 'string';
+
+}
+
+// string values stay strings so the compiler can read e.g. space names
+function createValueNode( type, value ) {
+
+	const trimmed = value.trim();
+
+	if ( type === 'boolean' ) {
+
+		const normalized = trimmed.toLowerCase();
+		return bool( normalized === 'true' || normalized === '1' );
+
+	}
+
+	if ( type === 'matrix33' ) return createMatrixNode( 3, parseValueVector( trimmed ) ) || mat3( ...IDENTITY_MAT3_VALUES );
+	if ( type === 'matrix44' ) return createMatrixNode( 4, parseValueVector( trimmed ) ) || mat4( ...IDENTITY_MAT4_VALUES );
+	if ( type === 'string' || type === 'filename' ) return trimmed;
+
+	const nodeClass = NODE_CLASS_BY_TYPE[ type ];
+	return nodeClass ? nodeClass( ...parseValueVector( trimmed ) ) : float( 0 );
+
+}
+
+const OUTPUT_CHANNELS = {
+	outx: 0,
+	outr: 0,
+	outy: 1,
+	outg: 1,
+	outz: 2,
+	outb: 2,
+	outw: 3,
+	outa: 3,
+};
+
+function mxFlipUvY( uvNode ) {
+
+	return vec2( element( uvNode, 0 ), sub( 1, element( uvNode, 1 ) ) );
+
+}
+
+function mxIdentityUv( uvNode ) {
+
+	return uvNode;
+
+}
+
+function getBottomLeftUvSpaceHelpers( uvSpace ) {
+
+	const helper = uvSpace === 'top-left' ? mxFlipUvY : mxIdentityUv;
+	return {
+		mxToBottomLeftUvSpace: helper,
+		mxFromBottomLeftUvSpace: helper,
+	};
+
+}
+
+function normalizeUvSpace( uvSpace ) {
+
+	if ( uvSpace === undefined || uvSpace === null ) return 'bottom-left';
+	if ( uvSpace === 'bottom-left' || uvSpace === 'top-left' ) return uvSpace;
+	throw new Error( `Unsupported MaterialX uvSpace "${uvSpace}". Expected "bottom-left" or "top-left".` );
+
+}
+
+function isSvgUri( uri ) {
+
+	if ( typeof uri !== 'string' ) return false;
+	return /\.svg(?:$|[?#])/i.test( uri );
+
+}
+
+function invertConstantMatrixValues( values, size ) {
+
+	if ( ! Array.isArray( values ) || values.length !== size * size ) return null;
+
+	if ( size === 3 ) {
+
+		const matrix = new Matrix3().setFromArray( values );
+		if ( Math.abs( matrix.determinant() ) < MATRIX_INVERSE_EPSILON ) return null;
+		matrix.invert();
+		// Convert Three.js internal column-major storage back to row-major literal order.
+		return matrix.transpose().elements;
+
+	}
+
+	if ( size === 4 ) {
+
+		const matrix = new Matrix4().setFromArray( values );
+		if ( Math.abs( matrix.determinant() ) < MATRIX_INVERSE_EPSILON ) return null;
+		matrix.invert();
+		// Convert Three.js internal column-major storage back to row-major literal order.
+		return matrix.transpose().elements;
+
+	}
+
+	return null;
+
+}
+
+function getOutputChannel( outputName ) {
+
+	return OUTPUT_CHANNELS[ outputName ] || 0;
+
+}
+
+function isChannelOutput( outputName ) {
+
+	return outputName in OUTPUT_CHANNELS;
+
+}
+
+class MaterialXNode {
+
+	constructor( materialX, nodeXML, nodePath = '' ) {
+
+		this.materialX = materialX;
+		this.nodeXML = nodeXML;
+		this.nodePath = nodePath ? nodePath + '/' + this.name : this.name;
+		this.parent = null;
+		this.node = null;
+		this.children = [];
+		this._nodeDef = undefined;
+
+	}
+
+	get element() {
+
+		return this.nodeXML.nodeName;
+
+	}
+	get nodeGraph() {
+
+		return this.getAttribute( 'nodegraph' );
+
+	}
+	get nodeName() {
+
+		return this.getAttribute( 'nodename' );
+
+	}
+	get interfaceName() {
+
+		return this.getAttribute( 'interfacename' );
+
+	}
+	get output() {
+
+		return this.getAttribute( 'output' );
+
+	}
+	get name() {
+
+		return this.getAttribute( 'name' );
+
+	}
+	get type() {
+
+		return this.getAttribute( 'type' );
+
+	}
+	get value() {
+
+		return this.getAttribute( 'value' );
+
+	}
+
+	getNodeGraph() {
+
+		let nodeX = this;
+		while ( nodeX !== null ) {
+
+			if ( nodeX.element === 'nodegraph' ) break;
+			nodeX = nodeX.parent;
+
+		}
+
+		return nodeX;
+
+	}
+
+	getRoot() {
+
+		let nodeX = this;
+		while ( nodeX.parent !== null ) {
+
+			nodeX = nodeX.parent;
+
+		}
+
+		return nodeX;
+
+	}
+
+	get referencePath() {
+
+		let referencePath = null;
+		if ( this.nodeGraph !== null && this.output !== null ) {
+
+			referencePath = this.nodeGraph + '/' + this.output;
+
+		} else if ( this.nodeName !== null || this.interfaceName !== null ) {
+
+			const graphNode = this.getNodeGraph();
+			const scopedReference = this.nodeName || this.interfaceName;
+			if ( graphNode && scopedReference ) {
+
+				referencePath = graphNode.nodePath + '/' + scopedReference;
+
+			} else if ( this.nodeName !== null ) {
+
+				// Surface-level nodename links can legitimately target top-level siblings.
+				referencePath = this.nodeName;
+
+			}
+
+		}
+
+		return referencePath;
+
+	}
+
+	get hasReference() {
+
+		return this.referencePath !== null;
+
+	}
+
+	getReferencedNode() {
+
+		if ( this.nodeGraph !== null ) {
+
+			const graph = this.materialX.getMaterialXNode( this.nodeGraph );
+			return graph ? this.output !== null ? graph.getChildByName( this.output ) || null : graph.children.find( ( child ) => child.element === 'output' ) || null : null;
+
+		}
+
+		return this.hasReference ? this.materialX.getMaterialXNode( this.referencePath ) || null : null;
+
+	}
+	get isConst() {
+
+		return this.element === 'input' && this.value !== null && this.type !== 'filename';
+
+	}
+
+	/**
+	 * The stdlib or document nodedef this node instance resolves to, or `null` when the category is unknown.
+	 *
+	 * @type {?Object}
+	 */
+	get nodeDef() {
+
+		if ( this._nodeDef === undefined ) this._nodeDef = resolveNodeDef( this );
+		return this._nodeDef;
+
+	}
+
+	hasDeclaredOutput( name ) {
+
+		return this.nodeDef !== null && name in this.nodeDef.outputs;
+
+	}
+
+	// The declared type of a nodedef input, or `null` when the nodedef does not declare it.
+	getNodeDefInputType( name ) {
+
+		const input = this.nodeDef ? this.nodeDef.inputs[ name ] : undefined;
+		return input ? input.type : null;
+
+	}
+
+	// `undefined` when the nodedef declares no default (e.g. filenames)
+	getDefaultInputNode( name ) {
+
+		const input = this.nodeDef ? this.nodeDef.inputs[ name ] : undefined;
+		if ( ! input ) return undefined;
+
+		if ( input.defaultgeomprop ) return this.materialX.compileContext.getGeomPropNode( input.defaultgeomprop );
+		if ( ! hasDefaultValue( input ) ) return undefined;
+
+		return createValueNode( input.type, input.value );
+
+	}
+
+	// geometric defaults are left out so surface mappers can tell an authored normal from the default
+	getDefaultInputNodes() {
+
+		const nodes = {};
+		if ( this.nodeDef === null ) return nodes;
+
+		for ( const [ name, input ] of Object.entries( this.nodeDef.inputs ) ) {
+
+			if ( input.defaultgeomprop || ! hasDefaultValue( input ) ) continue;
+			nodes[ name ] = createValueNode( input.type, input.value );
+
+		}
+
+		return nodes;
+
+	}
+
+	getColorSpaceNode() {
+
+		const csSource = this.getValueInput().getAttribute( 'colorspace' ) || this.getAttribute( 'colorspace' );
+		const csTarget = this.getRoot().getAttribute( 'colorspace' );
+		if ( ! csSource || ! csTarget ) return null;
+		const nodeName = `mx_${csSource}_to_${csTarget}`;
+		return colorSpaceLib[ nodeName ] || null;
+
+	}
+
+	logUnsupportedNode() {
+
+		this.materialX.log.add(
+			MaterialXLogCodes.UNSUPPORTED_NODE,
+			`Unsupported MaterialX node category "${this.element}" on "${this.name}".`,
+			this.name,
+		);
+
+	}
+
+	getTextureAddressMode( inputName ) {
+
+		// e.g. tiledimage, which samples with the image node's default addressing.
+		if ( this.declaresInput( inputName ) === false ) return 'periodic';
+
+		const rawMode = this.getNodeByName( inputName );
+		const mode = resolveTextureAddressMode( rawMode );
+		if ( mode ) return mode;
+
+		this.materialX.log.add(
+			MaterialXLogCodes.INVALID_VALUE,
+			`Unsupported texture address mode "${rawMode}" on input "${inputName}". Expected constant, clamp, periodic, or mirror.`,
+			this.name,
+		);
+		return 'periodic';
+
+	}
+
+	getTextureAddressModes() {
+
+		return {
+			u: this.getTextureAddressMode( 'uaddressmode' ),
+			v: this.getTextureAddressMode( 'vaddressmode' ),
+		};
+
+	}
+
+	// Follow an interfacename binding to its source input.
+	getValueInput() {
+
+		if ( this.interfaceName === null ) return this;
+		const boundInput = this.materialX.getInterfaceInput( this );
+		return boundInput !== null ? boundInput : this;
+
+	}
+
+	getTexture() {
+
+		const valueInput = this.getValueInput();
+		if ( valueInput.getValue() === '' ) return null;
+
+		const filePrefix = valueInput.getRecursiveAttribute( 'fileprefix' ) || '';
+		const sourceURI = filePrefix + valueInput.value;
+		const resolvedURI = this.materialX.resolveTextureURI( sourceURI );
+		const svgTexture = isSvgUri( resolvedURI );
+		const textureSourceNode = this.parent && typeof this.parent.getTextureAddressModes === 'function' ? this.parent : this;
+		const addressModes = textureSourceNode.getTextureAddressModes();
+		const textureCacheKey = `${resolvedURI}|${addressModes.u}|${addressModes.v}`;
+
+		if ( this.materialX.textureCache.has( textureCacheKey ) ) {
+
+			return this.materialX.textureCache.get( textureCacheKey );
+
+		}
+
+		let loader = svgTexture ? this.materialX.imageLoader : this.materialX.textureLoader;
+		let textureURL = resolvedURI;
+		if ( resolvedURI && ! svgTexture ) {
+
+			const handler = this.materialX.manager.getHandler( resolvedURI );
+			if ( handler !== null ) {
+
+				// The built-in loaders carry the document path; handlers do not.
+				loader = handler;
+				textureURL = LoaderUtils.resolveURL( resolvedURI, this.materialX.path );
+
+			}
+
+		}
+
+		const textureNode = texture( new Texture() );
+		textureNode.value.wrapS = TEXTURE_ADDRESS_MODE_WRAPPING[ addressModes.u ];
+		textureNode.value.wrapT = TEXTURE_ADDRESS_MODE_WRAPPING[ addressModes.v ];
+		textureNode.value.flipY = false;
+		this.materialX.textureCache.set( textureCacheKey, textureNode );
+
+		const nodeName = this.name;
+		const materialX = this.materialX;
+
+		materialX.pendingResources.push( new Promise( ( resolveLoad ) => {
+
+			loader.load( textureURL, ( imageData ) => {
+
+				if ( imageData.isTexture ) {
+
+					// Clone so the wrapping and orientation set below don't modify the handler's texture.
+					textureNode.value = imageData.clone();
+					textureNode.value.wrapS = TEXTURE_ADDRESS_MODE_WRAPPING[ addressModes.u ];
+					textureNode.value.wrapT = TEXTURE_ADDRESS_MODE_WRAPPING[ addressModes.v ];
+
+					// MaterialXLoader keeps textures top-first. Loaders such as EXRLoader store rows
+					// bottom-first (flipY = false), so invert the loader's orientation to match.
+					// flipY has no meaning for compressed textures.
+					if ( imageData.isCompressedTexture !== true ) textureNode.value.flipY = ! imageData.flipY;
+
+				} else {
+
+					textureNode.value.image = imageData;
+
+				}
+
+				textureNode.value.needsUpdate = true;
+				resolveLoad();
+
+			}, undefined, () => {
+
+				materialX.log.add(
+					MaterialXLogCodes.TEXTURE_LOAD_FAILED,
+					`Failed to load texture "${resolvedURI}".`,
+					nodeName,
+				);
+				resolveLoad();
+
+			} );
+
+		} ) );
+
+		return textureNode;
+
+	}
+
+	getClassFromType( type ) {
+
+		return NODE_CLASS_BY_TYPE[ type ] || null;
+
+	}
+
+	toBooleanNode( node ) {
+
+		return toBooleanNode( node );
+
+	}
+
+	getNode( out = null ) {
+
+		// A named output must not replace the cached default output.
+		const cacheDefaultOutput = out === null;
+		const cachedNode = this.materialX.getCachedNode( this );
+		if ( cachedNode !== null && cacheDefaultOutput ) return cachedNode;
+
+		let node;
+		let implemented = false;
+
+
+		// A connection that names no output reads the first one, as in MaterialX.
+		if ( this.element === 'separate2' || this.element === 'separate3' || this.element === 'separate4' ) {
+
+			const inNode = this.getNodeByName( 'in' );
+			return element( inNode, getOutputChannel( out ) );
+
+		}
+
+		const type = this.type;
+		// Channel suffixes (outr, outy, ...) extract a component unless the nodedef declares an output of that name.
+		const channelRequested = this.element !== 'input' && isChannelOutput( out ) && this.hasDeclaredOutput( out ) === false;
+
+		if ( this.isConst ) {
+
+			node = createValueNode( type, this.getValue() );
+
+		} else if ( this.hasReference ) {
+
+			if ( this.element === 'output' && this.output && out === null ) out = this.output;
+			let requestedOutput = out;
+			// For nodegraph references, this input's `output` attribute selects the graph output
+			// itself and should not be forwarded as an output selector on the resolved node.
+			if ( this.element === 'input' && this.nodeGraph !== null && this.output !== null ) {
+
+				requestedOutput = null;
+
+			}
+
+			const interfaceNode = this.interfaceName !== null ? this.materialX.getInterfaceNode( this ) : null;
+			const referenceNode = interfaceNode === null ? this.materialX.getMaterialXNode( this.referencePath ) : null;
+
+			if ( interfaceNode !== null ) {
+
+				node = interfaceNode;
+
+			} else if ( referenceNode ) {
+
+				node = referenceNode.getNode( requestedOutput );
+
+			} else {
+
+				this.materialX.log.add(
+					MaterialXLogCodes.MISSING_REFERENCE,
+					`Missing MaterialX reference "${this.referencePath}" from "${this.name}".`,
+					this.name,
+				);
+				node = float( 0 );
+
+			}
+
+		} else if ( this.element === 'input' && this.getAttribute( 'defaultgeomprop' ) !== null ) {
+
+			// An unconnected interface input takes its value from its declared geometric property.
+			node = this.materialX.compileContext.getGeomPropNode( this.getAttribute( 'defaultgeomprop' ) );
+
+		} else {
+
+			const resolvedNode = this.materialX.nodeResolver !== null ? this.materialX.nodeResolver( this, out ) : null;
+			implemented = ( resolvedNode === null || resolvedNode === undefined ) && this.materialX.getScope( this ) !== null;
+			node = resolvedNode !== null && resolvedNode !== undefined ? resolvedNode : implemented ? this.materialX.compileImplementation( this, channelRequested ? null : out ) : compileNodeFromRegistry( this, out, this.materialX.compileContext );
+
+		}
+
+		if ( node === null || node === undefined ) {
+
+			this.logUnsupportedNode();
+			node = float( 0 );
+
+		}
+
+		if ( channelRequested ) {
+
+			node = element( node, getOutputChannel( out ) );
+
+		}
+
+		const resolvedType = channelRequested ? 'float' : type;
+		if ( resolvedType === 'boolean' ) {
+
+			node = this.toBooleanNode( node );
+
+		} else if ( resolvedType === 'string' ) {
+
+			// String-typed inputs (for example transform* fromspace/tospace) are
+			// valid scalar parameters and should pass through without numeric casting.
+			node = typeof node === 'string' ? node : this.getValue();
+
+		} else {
+
+			const nodeToTypeClass = this.getClassFromType( resolvedType );
+			if ( nodeToTypeClass !== null ) {
+
+				node = nodeToTypeClass( node );
+
+			} else if ( resolvedType !== null && resolvedType !== undefined && resolvedType !== 'multioutput' ) {
+
+				this.materialX.log.add(
+					MaterialXLogCodes.INVALID_VALUE,
+					`Unexpected type "${resolvedType}" on node "${this.name}".`,
+					this.name,
+				);
+				node = float( 0 );
+
+			}
+
+		}
+
+		if ( node && typeof node === 'object' ) {
+
+			node.name = this.name;
+
+		}
+
+		if ( cacheDefaultOutput ) this.materialX.setCachedNode( this, node );
+		return node;
+
+	}
+
+	getChildByName( name ) {
+
+		for ( const input of this.children ) {
+
+			if ( input.name === name ) return input;
+
+		}
+
+	}
+
+	getNodes() {
+
+		const nodes = {};
+		for ( const input of this.children ) {
+
+			const value = input.getNode( input.output );
+			nodes[ input.name ] = value;
+
+		}
+
+		return nodes;
+
+	}
+
+	getInputTypes() {
+
+		const types = {};
+		for ( const input of this.children ) {
+
+			types[ input.name ] = input.type;
+
+		}
+
+		return types;
+
+	}
+
+	// nodes without a nodedef (e.g. from a host node resolver) accept any input
+	declaresInput( name ) {
+
+		return this.getChildByName( name ) !== undefined || this.nodeDef === null || name in this.nodeDef.inputs;
+
+	}
+
+	getNodeByName( name ) {
+
+		const child = this.getChildByName( name );
+		if ( child ) return child.getNode( child.output );
+
+		if ( this.declaresInput( name ) === false ) {
+
+			this.materialX.log.add(
+				MaterialXLogCodes.UNKNOWN_INPUT,
+				`"${this.element}" reads input "${name}", which nodedef "${this.nodeDef.name}" does not declare. Using fallback 0.`,
+				this.name,
+			);
+			return float( 0 );
+
+		}
+
+		return this.getDefaultInputNode( name );
+
+	}
+
+	getNodesByNames( ...names ) {
+
+		const nodes = [];
+		for ( const name of names ) {
+
+			const nodeValue = this.getNodeByName( name );
+			nodes.push( nodeValue );
+
+		}
+
+		return nodes;
+
+	}
+
+	getValue() {
+
+		return this.value ? this.value.trim() : '';
+
+	}
+
+	getVector() {
+
+		return parseValueVector( this.getValue() );
+
+	}
+
+	getAttribute( name ) {
+
+		const value = this.nodeXML.getAttribute( name );
+		if ( value === null && this.element === 'materialx' && name === 'colorspace' ) {
+
+			return DEFAULT_DOCUMENT_COLOR_SPACE;
+
+		}
+
+		return value;
+
+	}
+
+	getRecursiveAttribute( name ) {
+
+		let attribute = this.nodeXML.getAttribute( name );
+		if ( attribute === null && this.parent !== null ) {
+
+			attribute = this.parent.getRecursiveAttribute( name );
+
+		}
+
+		return attribute;
+
+	}
+
+	setMaterial( material, out = null ) {
+
+		if ( this.element === 'input' || this.element === 'output' ) {
+
+			const shader = this.getReferencedNode();
+			if ( shader !== null ) shader.setMaterial( material, this.nodeGraph !== null ? null : this.output || out );
+			return;
+
+		}
+
+		if ( this.materialX.setImplementationMaterial( this, material, out ) ) return;
+
+		const mapper = getSurfaceMapper( this.element );
+		if ( mapper ) {
+
+			const authored = this.getNodes();
+			mapper.apply( material, { ...this.getDefaultInputNodes(), ...authored }, this.materialX.log, this.name, authored, this.getInputTypes() );
+
+		} else {
+
+			this.logUnsupportedNode();
+
+		}
+
+	}
+
+	toNodeGraphMaterial() {
+
+		const material = new MeshBasicNodeMaterial();
+		material.name = this.name;
+
+		for ( const nodeX of this.children.toReversed() ) {
+
+			if ( nodeX.name === 'out' ) {
+
+				material.colorNode = nodeX.getNode();
+				break;
+
+			}
+
+		}
+
+		return material;
+
+	}
+
+	resolveSurfaceShaderNode( nodeX ) {
+
+		const visited = new Set();
+		let shader = nodeX || null;
+		let out = null;
+
+		while ( shader !== null && ( shader.element === 'input' || shader.element === 'output' ) ) {
+
+			if ( visited.has( shader ) ) return null;
+			visited.add( shader );
+			out = shader.nodeGraph !== null ? null : shader.output;
+			shader = shader.getReferencedNode();
+
+		}
+
+		return shader !== null ? this.materialX.resolveImplementationShader( shader, out ) : null;
+
+	}
+
+	toSurfaceMaterial() {
+
+		const surfaceShader = this.resolveSurfaceShaderNode( this.getChildByName( 'surfaceshader' ) );
+		const material = surfaceShader?.nodeDef?.name === 'ND_surface_unlit' ? new MeshBasicNodeMaterial() : new MeshPhysicalNodeMaterial();
+		material.name = this.name;
+
+		for ( const nodeX of this.children ) {
+
+			if ( nodeX.name === 'backsurfaceshader' ) {
+
+				// MaterialX supports separate back-surface shaders. Their use in practice
+				// is unclear; translating them per face is left for future work.
+				if ( nodeX.hasReference || nodeX.nodeGraph !== null ) {
+
+					this.materialX.log.add(
+						MaterialXLogCodes.IGNORED_SURFACE_INPUT,
+						'surfacematerial input "backsurfaceshader" is currently ignored in MaterialX translation.',
+						this.name,
+					);
+
+				}
+
+				continue;
+
+			}
+
+			const shaderProperties = this.resolveSurfaceShaderNode( nodeX );
+			if ( shaderProperties === null ) {
+
+				this.materialX.log.add(
+					MaterialXLogCodes.MISSING_REFERENCE,
+					`Missing MaterialX reference "${nodeX.referencePath || nodeX.nodeName || '(unknown)'}" from "${nodeX.name}".`,
+					nodeX.name,
+				);
+				continue;
+
+			}
+
+			nodeX.setMaterial( material );
+
+		}
+
+		return material;
+
+	}
+
+	toMaterials( materialName = null ) {
+
+		const materials = {};
+		const surfaceMaterials = this.children.filter( ( nodeX ) => nodeX.element === 'surfacematerial' );
+
+		let selectedSurfaceMaterials = surfaceMaterials;
+		if ( materialName ) {
+
+			selectedSurfaceMaterials = surfaceMaterials.filter( ( nodeX ) => nodeX.name === materialName );
+
+			if ( selectedSurfaceMaterials.length === 0 ) {
+
+				this.materialX.log.add(
+					MaterialXLogCodes.MISSING_MATERIAL,
+					`Could not find surfacematerial named "${materialName}".`,
+				);
+
+			}
+
+		}
+
+		for ( const nodeX of selectedSurfaceMaterials ) {
+
+			const material = nodeX.toSurfaceMaterial();
+			materials[ material.name ] = material;
+
+		}
+
+		if ( Object.keys( materials ).length === 0 ) {
+
+			for ( const nodeX of this.children ) {
+
+				// Only standalone nodegraphs should create preview materials.
+				if ( nodeX.element === 'nodegraph' && nodeX.getAttribute( 'nodedef' ) === null && this.materialX.implementationGraphNodes.has( nodeX ) === false ) {
+
+					const material = nodeX.toNodeGraphMaterial();
+					materials[ material.name ] = material;
+
+				}
+
+			}
+
+		}
+
+		return materials;
+
+	}
+
+	add( materialXNode ) {
+
+		materialXNode.parent = this;
+		this.children.push( materialXNode );
+
+	}
+
+}
+
+class MaterialXDocument {
+
+	constructor( manager, path, log, archiveResolver = null, uvSpace = 'bottom-left' ) {
+
+		this.manager = manager;
+		this.path = path;
+		this.log = log;
+		this.archiveResolver = archiveResolver;
+		this.uvSpace = normalizeUvSpace( uvSpace );
+
+		this.nodesXLib = new Map();
+		this.imageLoader = new ImageLoader( manager );
+		this.imageLoader.setPath( path );
+		this.textureLoader = new ImageBitmapLoader( manager );
+		this.textureLoader.setOptions( { imageOrientation: 'none' } );
+		this.textureLoader.setPath( path );
+		this.textureCache = new Map();
+		this.pendingResources = [];
+		this.nodeResolver = null;
+		this.documentNodeDefs = null;
+
+		this.implementationGraphs = new Map();
+		this.implementationGraphNodes = new Set();
+		this.scope = null;
+		this.rootScopes = new Map();
+		const bottomLeftUvSpaceHelpers = getBottomLeftUvSpaceHelpers( this.uvSpace );
+
+		this.compileContext = {
+			compileRegistry: COMPILE_REGISTRY,
+			nodeLibrary: MtlXLibrary,
+			...bottomLeftUvSpaceHelpers,
+			getTexcoordNode: ( index = 0 ) => bottomLeftUvSpaceHelpers.mxToBottomLeftUvSpace( uv( index ) ),
+			getGeomPropNode: ( name ) => {
+
+				const uvMatch = /^UV(\d+)$/.exec( name );
+				if ( uvMatch ) return bottomLeftUvSpaceHelpers.mxToBottomLeftUvSpace( uv( parseInt( uvMatch[ 1 ], 10 ) ) );
+				return GEOMPROP_NODES[ name ];
+
+			},
+			mxTransformUv: mx_transform_uv,
+			mxHextileCoord,
+			mxHextileComputeBlendWeights,
+			invertConstantMatrixValues,
+			IDENTITY_MAT3_VALUES,
+			IDENTITY_MAT4_VALUES,
+		};
+
+	}
+
+	resolveTextureURI( uri ) {
+
+		if ( this.archiveResolver ) {
+
+			const archiveURI = this.archiveResolver( uri );
+			if ( archiveURI ) return archiveURI;
+
+		}
+
+		return uri;
+
+	}
+
+	indexImplementations( rootNode ) {
+
+		for ( const nodeX of rootNode.children ) {
+
+			const nodeDefName = nodeX.getAttribute( 'nodedef' );
+			const graphName = nodeX.element === 'implementation' ? nodeX.getAttribute( 'nodegraph' ) : null;
+			const graph = nodeX.element === 'nodegraph' && nodeDefName !== null ? nodeX : graphName !== null ? this.getMaterialXNode( graphName ) : undefined;
+			if ( graph === undefined ) continue;
+
+			this.implementationGraphNodes.add( graph );
+			if ( this.implementationGraphs.has( nodeDefName ) === false ) this.implementationGraphs.set( nodeDefName, graph );
+
+		}
+
+	}
+
+	// Each custom node instance needs its own inputs and cached TSL nodes.
+	getScope( materialXNode ) {
+
+		const nodeDef = materialXNode.nodeDef;
+		const graph = nodeDef !== null ? this.implementationGraphs.get( nodeDef.name ) : undefined;
+		if ( graph === undefined ) return null;
+
+		for ( let parent = this.scope; parent !== null; parent = parent.parent ) {
+
+			if ( parent.graph === graph ) {
+
+				this.log.add(
+					MaterialXLogCodes.INVALID_VALUE,
+					`The nodegraph of "${ materialXNode.element }" uses the node it implements.`,
+					materialXNode.name,
+				);
+				return null;
+
+			}
+
+		}
+
+		const scopes = this.scope !== null ? this.scope.childScopes : this.rootScopes;
+		let scope = scopes.get( materialXNode );
+
+		if ( scope === undefined ) {
+
+			scope = { instance: materialXNode, nodeDef, graph, parent: this.scope, nodes: new Map(), childScopes: new Map() };
+			scopes.set( materialXNode, scope );
+
+		}
+
+		return scope;
+
+	}
+
+	withScope( scope, callback ) {
+
+		const previous = this.scope;
+		this.scope = scope;
+
+		try {
+
+			return callback();
+
+		} finally {
+
+			this.scope = previous;
+
+		}
+
+	}
+
+	isInScope( materialXNode ) {
+
+		if ( this.scope === null ) return false;
+
+		for ( let parent = materialXNode.parent; parent !== null; parent = parent.parent ) {
+
+			if ( parent === this.scope.graph ) return true;
+
+		}
+
+		return false;
+
+	}
+
+	getCachedNode( materialXNode ) {
+
+		if ( this.isInScope( materialXNode ) ) return this.scope.nodes.get( materialXNode ) ?? null;
+		return materialXNode.node;
+
+	}
+
+	setCachedNode( materialXNode, node ) {
+
+		if ( this.isInScope( materialXNode ) ) this.scope.nodes.set( materialXNode, node );
+		else materialXNode.node = node;
+
+	}
+
+	getGraphOutput( scope, out ) {
+
+		// An omitted selector uses the first output declared by the nodedef.
+		const name = out === null ? Object.keys( scope.nodeDef.outputs )[ 0 ] : out;
+		return scope.graph.children.find( ( child ) => child.element === 'output' && child.name === name ) || null;
+
+	}
+
+	compileImplementation( materialXNode, out ) {
+
+		const scope = this.getScope( materialXNode );
+		if ( scope === null ) return null;
+
+		const output = this.getGraphOutput( scope, out );
+		if ( output === null ) {
+
+			this.log.add(
+				MaterialXLogCodes.MISSING_REFERENCE,
+				`Missing output "${ out || 'out' }" in the nodegraph of "${ materialXNode.name }".`,
+				materialXNode.name,
+			);
+			return float( 0 );
+
+		}
+
+		// Use the output selector stored on the graph output.
+		return this.withScope( scope, () => output.getNode() );
+
+	}
+
+	setImplementationMaterial( materialXNode, material, out ) {
+
+		const scope = this.getScope( materialXNode );
+		if ( scope === null ) return false;
+
+		const output = this.getGraphOutput( scope, out );
+		const shaderNode = output !== null && output.hasReference ? this.getMaterialXNode( output.referencePath ) : undefined;
+		if ( shaderNode === undefined ) {
+
+			this.log.add(
+				MaterialXLogCodes.MISSING_REFERENCE,
+				`Missing shader output "${ out || 'out' }" in the nodegraph of "${ materialXNode.name }".`,
+				materialXNode.name,
+			);
+			return true;
+
+		}
+
+		this.withScope( scope, () => shaderNode.setMaterial( material, output.output ) );
+		return true;
+
+	}
+
+	resolveImplementationShader( materialXNode, out ) {
+
+		const scope = this.getScope( materialXNode );
+		if ( scope === null ) return materialXNode;
+
+		const output = this.getGraphOutput( scope, out );
+		return this.withScope( scope, () => materialXNode.resolveSurfaceShaderNode( output ) );
+
+	}
+
+	// Resolve interfacename to the node instance's input.
+	// If that input is omitted, use the nodedef default.
+	getInterfaceInput( materialXNode ) {
+
+		// Regular nodegraphs bind to their own inputs.
+		if ( ! this.isInScope( materialXNode ) ) {
+
+			const graphInput = this.getMaterialXNode( materialXNode.referencePath );
+			return graphInput !== undefined && graphInput !== materialXNode ? graphInput : null;
+
+		}
+
+		const scope = this.scope;
+		const name = materialXNode.interfaceName;
+		const input = scope.instance.getChildByName( name );
+		if ( input !== undefined ) return this.withScope( scope.parent, () => input.getValueInput() );
+		const declaration = this.getMaterialXNode( scope.nodeDef.name );
+		return declaration ? declaration.getChildByName( name ) ?? null : null;
+
+	}
+
+	getInterfaceNode( materialXNode ) {
+
+		if ( ! this.isInScope( materialXNode ) ) return null;
+
+		const scope = this.scope;
+		const name = materialXNode.interfaceName;
+		const input = scope.instance.getChildByName( name );
+		// Evaluate the instance input in the parent scope to resolve nested interface bindings.
+		if ( input !== undefined ) return this.withScope( scope.parent, () => input.getNode( input.output ) );
+
+		return this.withScope( null, () => scope.instance.getDefaultInputNode( name ) ?? null );
+
+	}
+
+	waitForResources() {
+
+		return Promise.all( this.pendingResources ).then( () => undefined );
+
+	}
+
+	addMaterialXNode( materialXNode ) {
+
+		this.nodesXLib.set( materialXNode.nodePath, materialXNode );
+
+	}
+
+	getMaterialXNode( ...names ) {
+
+		return this.nodesXLib.get( names.join( '/' ) );
+
+	}
+
+	// Convert document nodedefs to the format used by the stdlib registry.
+	getDocumentNodeDefs() {
+
+		if ( this.documentNodeDefs !== null ) return this.documentNodeDefs;
+
+		this.documentNodeDefs = {};
+
+		for ( const nodeX of this.nodesXLib.values() ) {
+
+			if ( nodeX.element !== 'nodedef' ) continue;
+
+			const nodedef = { node: nodeX.getAttribute( 'node' ), inputs: {}, outputs: {} };
+			const version = nodeX.getAttribute( 'version' );
+			if ( version ) nodedef.version = version;
+			if ( nodeX.getAttribute( 'isdefaultversion' ) === 'true' ) nodedef.isdefaultversion = true;
+			if ( nodeX.type && nodeX.type !== 'multioutput' ) nodedef.outputs.out = nodeX.type;
+
+			for ( const child of nodeX.children ) {
+
+				if ( child.element === 'output' ) {
+
+					nodedef.outputs[ child.name ] = child.type;
+
+				} else if ( child.element === 'input' ) {
+
+					const input = { type: child.type };
+					if ( child.value !== null ) input.value = child.value;
+					const geomprop = child.getAttribute( 'defaultgeomprop' );
+					if ( geomprop ) input.defaultgeomprop = geomprop;
+					nodedef.inputs[ child.name ] = input;
+
+				}
+
+			}
+
+			this.documentNodeDefs[ nodeX.name ] = nodedef;
+
+		}
+
+		return this.documentNodeDefs;
+
+	}
+
+	parseNode( nodeXML, nodePath = '' ) {
+
+		return parseMaterialXNodeTree(
+			nodeXML,
+			( childNodeXML, childNodePath ) => new MaterialXNode( this, childNodeXML, childNodePath ),
+			( materialXNode ) => this.addMaterialXNode( materialXNode ),
+			nodePath,
+		);
+
+	}
+
+	parse( text, materialName = null, options = {} ) {
+
+		this.nodeResolver = options.nodeResolver || null;
+		this.documentNodeDefs = null;
+
+		const rootNode = parseMaterialXText(
+			text,
+			( childNodeXML, childNodePath ) => new MaterialXNode( this, childNodeXML, childNodePath ),
+			( materialXNode ) => this.addMaterialXNode( materialXNode ),
+		);
+
+		this.indexImplementations( rootNode );
+
+		if ( options.interfaceValidator ) {
+
+			options.interfaceValidator( rootNode, this.log );
+
+		}
+
+		const materials = rootNode.toMaterials( materialName );
+		return {
+			materials,
+			log: this.log.entries,
+			errors: this.log.errors,
+			warnings: this.log.warnings,
+		};
+
+	}
+
+}
+
+export { MaterialXDocument };

@@ -1,0 +1,48 @@
+{
+  "name": "poisson-disk-sampling",
+  "version": "2.3.1",
+  "description": "Poisson disk sampling in arbitrary dimensions",
+  "main": "src/poisson-disk-sampling.js",
+  "scripts": {
+    "build": "browserify src/poisson-disk-sampling.js --s PoissonDiskSampling > build/poisson-disk-sampling.js",
+    "build-min": "browserify src/poisson-disk-sampling.js --s PoissonDiskSampling | terser --ecma 5 > build/poisson-disk-sampling.min.js",
+    "test": "mocha test/",
+    "eyeball": "node eyeball.js 2 > test.png && open test.png",
+    "benchmark": "node benchmark.js"
+  },
+  "files": [
+    "src/neighbourhood.js",
+    "src/poisson-disk-sampling.js",
+    "src/sphere-random.js",
+    "src/tiny-ndarray.js",
+    "src/implementations/fixed-density.js",
+    "src/implementations/variable-density.js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kchapelier/poisson-disk-sampling.git"
+  },
+  "keywords": [
+    "poisson",
+    "noise",
+    "blue noise",
+    "sampling"
+  ],
+  "author": "Kevin Chapelier",
+  "license": "MIT",
+  "readmeFilename": "README.md",
+  "bugs": {
+    "url": "https://github.com/kchapelier/poisson-disk-sampling/issues"
+  },
+  "homepage": "https://github.com/kchapelier/poisson-disk-sampling",
+  "dependencies": {
+    "moore": "~1.0.0"
+  },
+  "devDependencies": {
+    "browserify": "^17.0.0",
+    "chai": "~4.3.6",
+    "mocha": "~10.0.0",
+    "pngjs-nozlib": "~1.0.0",
+    "terser": "^5.13.1"
+  }
+}

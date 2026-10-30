@@ -1,0 +1,237 @@
+# `@mdx-js/rollup`
+
+[![Build][build-badge]][build]
+[![Coverage][coverage-badge]][coverage]
+[![Downloads][downloads-badge]][downloads]
+[![Sponsors][sponsors-badge]][collective]
+[![Backers][backers-badge]][collective]
+[![Chat][chat-badge]][chat]
+
+Rollup (and Vite) plugin for MDX.
+
+<!-- more -->
+
+## Contents
+
+* [What is this?](#what-is-this)
+* [When should I use this?](#when-should-i-use-this)
+* [Install](#install)
+* [Use](#use)
+* [API](#api)
+  * [`mdx(options?)`](#mdxoptions)
+  * [`Options`](#options)
+* [Examples](#examples)
+  * [Combine with Babel](#combine-with-babel)
+* [Types](#types)
+* [Compatibility](#compatibility)
+* [Security](#security)
+* [Contribute](#contribute)
+* [License](#license)
+
+## What is this?
+
+This package is a Rollup (and Vite) plugin to support MDX.
+
+## When should I use this?
+
+This integration is useful if you’re using Rollup (or another tool that uses
+Rollup, such as Vite).
+
+This integration can be combined with the Babel plugin to compile modern
+JavaScript features to ones your users support.
+
+If you want to evaluate MDX code then the lower-level compiler (`@mdx-js/mdx`)
+can be used manually.
+
+## Install
+
+This package is [ESM only][esm].
+In Node.js (version 16+), install with [npm][]:
+
+```sh
+npm install @mdx-js/rollup
+```
+
+## Use
+
+Add something along these lines to your `rollup.config.js`:
+
+```tsx
+/**
+ * @import {RollupOptions} from 'rollup'
+ */
+
+import mdx from '@mdx-js/rollup'
+
+/** @type {RollupOptions} */
+const config = {
+  // …
+  plugins: [
+    // …
+    mdx({/* jsxImportSource: …, otherOptions… */})
+  ]
+}
+
+export default config
+```
+
+See also [¶ Vite][vite] if you’re using Rollup through them for more info.
+
+## API
+
+This package exports no identifiers.
+The default export is [`mdx`][api-mdx].
+
+### `mdx(options?)`
+
+Plugin to compile MDX w/ [rollup][].
+
+###### Parameters
+
+* `options` ([`Options`][api-options], optional)
+  — configuration
+
+###### Returns
+
+Rollup (and Vite) plugin.
+
+### `Options`
+
+Configuration (TypeScript type).
+
+Options are the same as [`CompileOptions` from `@mdx-js/mdx`][compile-options]
+with the exception that the `SourceMapGenerator` option is supported based on
+how you configure Rollup.
+You cannot pass it manually.
+When using Vite, the `development` option is also supported based on how you
+configure Vite.
+
+There are also two additional options:
+
+###### Fields
+
+* `exclude` (`Array<RegExp | string>`, `RegExp`, or `string`, optional)
+  — [picomatch][] patterns to exclude
+* `include` (`Array<RegExp | string>`, `RegExp`, or `string`, optional)
+  — [picomatch][] patterns to include
+
+## Examples
+
+### Combine with Babel
+
+If you use modern JavaScript features you might want to use Babel through
+[`@rollup/plugin-babel`][rollup-plugin-babel] to compile to code that works:
+
+```tsx
+/**
+ * @import {RollupOptions} from 'rollup'
+ */
+
+import mdx from '@mdx-js/rollup'
+import {babel} from '@rollup/plugin-babel'
+
+/** @type {RollupOptions} */
+const config = {
+  // …
+  plugins: [
+    // …
+    mdx({/* jsxImportSource: …, otherOptions… */}),
+    babel({
+      // Also run on what used to be `.mdx` (but is now JS):
+      extensions: ['.js', '.jsx', '.cjs', '.mjs', '.md', '.mdx']
+      // Other options…
+    })
+  ]
+}
+
+export default config
+```
+
+## Types
+
+This package is fully typed with [TypeScript][].
+It exports the additional type [`Options`][api-options].
+See [§ Types][types] on our website for information.
+
+## Compatibility
+
+Projects maintained by the unified collective are compatible with maintained
+versions of Node.js.
+
+When we cut a new major release, we drop support for unmaintained versions of
+Node.
+This means we try to keep the current release line, `@mdx-js/rollup@^3`,
+compatible with Node.js 16.
+
+## Security
+
+See [§ Security][security] on our website for information.
+
+## Contribute
+
+See [§ Contribute][contribute] on our website for ways to get started.
+See [§ Support][support] for ways to get help.
+
+This project has a [code of conduct][coc].
+By interacting with this repository, organization, or community you agree to
+abide by its terms.
+
+## License
+
+[MIT][] © [Titus Wormer][author]
+
+[api-mdx]: #mdxoptions
+
+[api-options]: #options
+
+[author]: https://wooorm.com
+
+[backers-badge]: https://opencollective.com/unified/backers/badge.svg
+
+[build]: https://github.com/mdx-js/mdx/actions
+
+[build-badge]: https://github.com/mdx-js/mdx/workflows/main/badge.svg
+
+[chat]: https://github.com/mdx-js/mdx/discussions
+
+[chat-badge]: https://img.shields.io/badge/chat-discussions-success.svg
+
+[coc]: https://github.com/mdx-js/.github/blob/main/code-of-conduct.md
+
+[collective]: https://opencollective.com/unified
+
+[compile-options]: https://mdxjs.com/packages/mdx/#compileoptions
+
+[contribute]: https://mdxjs.com/community/contribute/
+
+[coverage]: https://codecov.io/github/mdx-js/mdx
+
+[coverage-badge]: https://img.shields.io/codecov/c/github/mdx-js/mdx/main.svg
+
+[downloads]: https://www.npmjs.com/package/@mdx-js/rollup
+
+[downloads-badge]: https://img.shields.io/npm/dm/@mdx-js/rollup.svg
+
+[esm]: https://gist.github.com/sindresorhus/a39789f98801d908bbc7ff3ecc99d99c
+
+[mit]: https://github.com/mdx-js/mdx/blob/main/packages/rollup/license
+
+[npm]: https://docs.npmjs.com/cli/install
+
+[picomatch]: https://github.com/micromatch/picomatch#globbing-features
+
+[rollup]: https://rollupjs.org
+
+[rollup-plugin-babel]: https://github.com/rollup/plugins/tree/HEAD/packages/babel
+
+[security]: https://mdxjs.com/getting-started/#security
+
+[sponsors-badge]: https://opencollective.com/unified/sponsors/badge.svg
+
+[support]: https://mdxjs.com/community/support/
+
+[types]: https://mdxjs.com/getting-started/#types
+
+[typescript]: https://www.typescriptlang.org
+
+[vite]: https://mdxjs.com/getting-started/#vite

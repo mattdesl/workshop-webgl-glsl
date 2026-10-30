@@ -1,0 +1,35 @@
+{
+  "name": "lineclip",
+  "version": "1.1.5",
+  "description": "A fast polyline and polygon clipping library.",
+  "main": "index.js",
+  "devDependencies": {
+    "benchmark": "^1.0.0",
+    "eslint": "^1.5.0",
+    "tap": "^1.4.0"
+  },
+  "scripts": {
+    "test": "eslint index.js test.js && tap test.js",
+    "cov": "tap test.js --cov"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mapbox/lineclip.git"
+  },
+  "keywords": [
+    "algorithm",
+    "line",
+    "polyline",
+    "polygon",
+    "geometry",
+    "clip",
+    "geo",
+    "cohen-sutherland"
+  ],
+  "author": "Vladimir Agafonkin",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mapbox/lineclip/issues"
+  },
+  "homepage": "https://github.com/mapbox/lineclip#readme"
+}

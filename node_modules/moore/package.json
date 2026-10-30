@@ -1,0 +1,27 @@
+{
+  "name": "moore",
+  "version": "1.0.0",
+  "description": "Generates Moore neighborhoods of any range/dimension",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/hughsk/moore.git"
+  },
+  "keywords": [
+    "moore",
+    "neighborhoods",
+    "adjacent",
+    "cell",
+    "table",
+    "grid"
+  ],
+  "author": "Hugh Kennedy <hughskennedy@gmail.com> (http://hughskennedy.com/)",
+  "license": "MIT",
+  "readmeFilename": "README.md",
+  "devDependencies": {
+    "tape": "~1.0.4"
+  }
+}

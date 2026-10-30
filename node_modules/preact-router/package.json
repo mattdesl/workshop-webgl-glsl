@@ -1,0 +1,104 @@
+{
+	"name": "preact-router",
+	"amdName": "preactRouter",
+	"version": "4.1.2",
+	"description": "Connect your components up to that address bar.",
+	"main": "dist/preact-router.js",
+	"module": "dist/preact-router.module.js",
+	"jsnext:main": "dist/preact-router.module.js",
+	"umd:main": "dist/preact-router.umd.js",
+	"unpkg": "dist/preact-router.umd.js",
+	"exports": {
+		".": {
+			"types": "./index.d.ts",
+			"module": "./dist/preact-router.mjs",
+			"import": "./dist/preact-router.mjs",
+			"require": "./dist/preact-router.js"
+		},
+		"./package.json": "./package.json",
+		"./match": {
+			"types": "./match/index.d.ts",
+			"module": "./match/index.mjs",
+			"import": "./match/index.mjs",
+			"require": "./match/index.js"
+		},
+		"./match/package.json": "./match/package.json"
+	},
+	"scripts": {
+		"build": "microbundle -f es --no-generateTypes && microbundle src/cjs.js -f cjs,umd --no-generateTypes && (cd match && npm run build)",
+		"postbuild": "cp dist/preact-router.module.js dist/preact-router.mjs && cp match/index.module.js match/index.mjs",
+		"test": "npm-run-all lint build test:unit test:ts",
+		"lint": "eslint src test",
+		"fix": "npm run lint -- --fix",
+		"test:unit": "karmatic",
+		"test:ts": "tsc -p ./test",
+		"prepublishOnly": "npm-run-all build",
+		"release": "npm run build && git commit -am $npm_package_version && git tag $npm_package_version && git push && git push --tags && npm publish",
+		"format": "prettier --write ."
+	},
+	"files": [
+		"dist",
+		"match",
+		"index.d.ts"
+	],
+	"typings": "./index.d.ts",
+	"keywords": [
+		"preact",
+		"router"
+	],
+	"author": "Jason Miller <jason@developit.ca>",
+	"license": "MIT",
+	"repository": "preactjs/preact-router",
+	"homepage": "https://github.com/preactjs/preact-router",
+	"eslintConfig": {
+		"extends": "preact",
+		"rules": {
+			"jest/no-jasmine-globals": 0
+		},
+		"globals": {
+			"spyOn": "readonly"
+		}
+	},
+	"husky": {
+		"hooks": {
+			"pre-commit": "lint-staged"
+		}
+	},
+	"lint-staged": {
+		"**/*.{js,ts,jsx,tsx}": [
+			"prettier --write"
+		],
+		"*.json": [
+			"prettier --write"
+		]
+	},
+	"prettier": {
+		"singleQuote": true,
+		"useTabs": true,
+		"trailingComma": "none",
+		"arrowParens": "avoid"
+	},
+	"peerDependencies": {
+		"preact": ">=10"
+	},
+	"devDependencies": {
+		"@babel/plugin-transform-react-jsx": "^7.9.1",
+		"@types/jasmine": "^3.10.3",
+		"chai": "^4.3.7",
+		"eslint": "^6.8.0",
+		"eslint-config-preact": "^1.1.1",
+		"history": "^5.2.0",
+		"husky": "^7.0.2",
+		"karmatic": "^2.1.0",
+		"lint-staged": "^11.1.2",
+		"microbundle": "^0.14.2",
+		"mocha": "^5.2.0",
+		"npm-run-all": "^3.0.0",
+		"preact": "^10.16.0",
+		"prettier": "^2.3.2",
+		"sinon": "^7.1.0",
+		"sinon-chai": "^3.7.0",
+		"typescript": "^4.9.5",
+		"webpack": "^4.42.0"
+	}
+}

@@ -1,0 +1,111 @@
+{
+  "name": "markdown-it",
+  "version": "15.0.3",
+  "description": "Markdown-it - modern pluggable markdown parser.",
+  "keywords": [
+    "markdown",
+    "parser",
+    "commonmark",
+    "markdown-it",
+    "markdown-it-plugin"
+  ],
+  "repository": "markdown-it/markdown-it",
+  "license": "MIT",
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/puzrin"
+    },
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/markdown-it"
+    }
+  ],
+  "main": "./dist/markdown-it.cjs.js",
+  "module": "./dist/markdown-it.mjs",
+  "types": "./dist/markdown-it.d.cts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/markdown-it.d.mts",
+        "default": "./dist/markdown-it.mjs"
+      },
+      "require": {
+        "types": "./dist/markdown-it.d.cts",
+        "default": "./dist/markdown-it.cjs.js"
+      }
+    },
+    "./browser": {
+      "import": {
+        "types": "./dist/markdown-it.d.mts",
+        "default": "./dist/browser/markdown-it.esm.min.mjs"
+      },
+      "require": {
+        "types": "./dist/markdown-it.d.cts",
+        "default": "./dist/browser/markdown-it.umd.min.js"
+      },
+      "default": "./dist/browser/markdown-it.umd.min.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "markdown-it": "bin/markdown-it.mjs"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "type-check": "tsc --noEmit && tsc --noEmit --strict --skipLibCheck --ignoreConfig --module node20 --moduleResolution node16 test/build/*.[cm]ts",
+    "test": "npm run lint && npm run build && npm run type-check && npm run test:cmspec && npm run test:markdown-it && npm run test:build",
+    "test:cmspec": "node --test --test-reporter=dot test/cmspec/**/*.test.mjs",
+    "test:markdown-it": "node --test test/markdown-it/**/*.test.mjs",
+    "test:build": "node --test test/build/**/*.test.mjs",
+    "pathological:track-ref": "node support/track-ref-pathological.mjs",
+    "pathological:update-hash": "node support/track-ref-pathological.mjs --update",
+    "coverage": "npm run build && c8 --include 'src/**' -r text -r html -r lcov node --test --test-reporter=dot test/**/*.test.mjs",
+    "doc": "typedoc",
+    "doc:publish": "npm run doc && gh-pages -d apidoc -f",
+    "demo": "npm run lint && node support/build_demo.mjs",
+    "demo:publish": "npm run demo && gh-pages -d demo -f -b master -r git@github.com:markdown-it/markdown-it.github.io.git",
+    "build": "node support/build-dist.mjs",
+    "benchmark-deps": "npm install --prefix benchmark/extra/",
+    "specsplit": "support/specsplit.mjs good -o test/fixtures/commonmark/good.txt && support/specsplit.mjs bad -o test/fixtures/commonmark/bad.txt && support/specsplit.mjs",
+    "todo": "grep 'TODO' -n -r ./src 2>/dev/null",
+    "prepack": "npm test && npm run build && npm run demo && npm run doc",
+    "postpublish": "npm run demo:publish && npm run doc:publish"
+  },
+  "files": [
+    "bin/",
+    "dist/"
+  ],
+  "dependencies": {
+    "argparse": "^3.0.3",
+    "entities": "^8.1.0",
+    "linkify-it": "^6.1.0",
+    "mdurl": "^2.1.0",
+    "punycode.js": "^2.3.1",
+    "uc.micro": "^3.0.0"
+  },
+  "devDependencies": {
+    "c8": "^12.0.0",
+    "eslint": "^10.12.0",
+    "gh-pages": "^6.3.0",
+    "highlight.js": "^11.12.0",
+    "markdown-it-abbr": "^2.0.0",
+    "markdown-it-container": "^4.0.0",
+    "markdown-it-deflist": "^4.0.0",
+    "markdown-it-emoji": "^3.1.0",
+    "markdown-it-footnote": "^4.0.0",
+    "markdown-it-for-inline": "^2.0.1",
+    "markdown-it-ins": "^4.0.0",
+    "markdown-it-mark": "^4.0.0",
+    "markdown-it-sub": "^2.0.0",
+    "markdown-it-sup": "^2.0.0",
+    "neostandard": "^0.14.1",
+    "rolldown-plugin-dts": "^0.28.8",
+    "tinybench": "^6.2.2",
+    "typedoc": "^0.28.20",
+    "typedoc-plugin-missing-exports": "^4.1.4",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.4",
+    "vite-plugin-singlefile": "^2.3.3"
+  }
+}

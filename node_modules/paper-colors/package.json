@@ -1,0 +1,33 @@
+{
+  "name": "paper-colors",
+  "version": "1.0.0",
+  "description": "A small set of pastel and off-white paper colors",
+  "main": "./paper-colors.json",
+  "license": "MIT",
+  "author": {
+    "name": "Matt DesLauriers",
+    "email": "dave.des@gmail.com",
+    "url": "https://github.com/mattdesl"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "canvas-sketch": "^0.5.0",
+    "canvas-sketch-cli": "^1.9.1"
+  },
+  "scripts": {
+    "test": "canvas-sketch visualize.js"
+  },
+  "keywords": [
+    "paper",
+    "color",
+    "palettes"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/mattdesl/paper-colors.git"
+  },
+  "homepage": "https://github.com/mattdesl/paper-colors",
+  "bugs": {
+    "url": "https://github.com/mattdesl/paper-colors/issues"
+  }
+}

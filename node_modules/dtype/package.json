@@ -1,0 +1,34 @@
+{
+  "name": "dtype",
+  "description": "Return a data type from a string representing the type",
+  "version": "2.0.0",
+  "homepage": "https://github.com/shama/dtype",
+  "author": {
+    "name": "Kyle Robinson Young",
+    "email": "kyle@dontkry.com",
+    "url": "http://dontkry.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/shama/dtype.git"
+  },
+  "bugs": {
+    "url": "https://github.com/shama/dtype/issues"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">= 0.8.0"
+  },
+  "scripts": {
+    "test": "node test.js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "tape": "^4.0.0"
+  },
+  "keywords": [
+    "ndarray",
+    "array",
+    "typed"
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "name": "array-almost-equal",
+  "version": "1.0.0",
+  "description": "whether two number arrays are almost equal",
+  "main": "index.js",
+  "license": "MIT",
+  "author": {
+    "name": "Matt DesLauriers",
+    "email": "dave.des@gmail.com",
+    "url": "https://github.com/mattdesl"
+  },
+  "dependencies": {
+    "almost-equal": "0.0.0",
+    "an-array": "^1.0.0"
+  },
+  "devDependencies": {
+    "faucet": "0.0.1",
+    "tape": "^3.4.0"
+  },
+  "scripts": {
+    "test": "node test.js | faucet"
+  },
+  "keywords": [
+    "vector",
+    "array",
+    "rgba",
+    "color",
+    "point",
+    "position",
+    "float",
+    "floats",
+    "numbers",
+    "array",
+    "compare",
+    "test",
+    "epsilon",
+    "fuzzy",
+    "fuzz",
+    "almost-equal",
+    "arrays"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Jam3/array-almost-equal.git"
+  },
+  "homepage": "https://github.com/Jam3/array-almost-equal",
+  "bugs": {
+    "url": "https://github.com/Jam3/array-almost-equal/issues"
+  }
+}

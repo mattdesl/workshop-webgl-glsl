@@ -1,0 +1,37 @@
+{
+  "name": "an-array",
+  "version": "1.0.0",
+  "description": "Check if an object is an array or a typed array",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "test": "node test | tap-spec"
+  },
+  "author": {
+    "name": "Hugh Kennedy",
+    "email": "hughskennedy@gmail.com",
+    "url": "http://hughsk.io/"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "tape": "^3.0.1",
+    "tap-spec": "^1.0.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/hughsk/an-array.git"
+  },
+  "keywords": [
+    "typed",
+    "array",
+    "check",
+    "class",
+    "float32array",
+    "instance",
+    "is"
+  ],
+  "homepage": "https://github.com/hughsk/an-array",
+  "bugs": {
+    "url": "https://github.com/hughsk/an-array/issues"
+  }
+}

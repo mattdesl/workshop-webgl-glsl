@@ -1,0 +1,66 @@
+{
+  "name": "linkify-it",
+  "version": "6.1.0",
+  "description": "Links recognition library with FULL unicode support",
+  "keywords": [
+    "linkify",
+    "linkifier",
+    "autolink",
+    "autolinker"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/markdown-it/linkify-it.git"
+  },
+  "main": "build/index.cjs.js",
+  "module": "build/index.mjs",
+  "types": "build/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "require": "./build/index.cjs.js",
+      "import": "./build/index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "build/"
+  ],
+  "license": "MIT",
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/puzrin"
+    },
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/markdown-it"
+    }
+  ],
+  "scripts": {
+    "lint": "eslint .",
+    "type-check": "tsc --noEmit",
+    "test": "npm run lint && npm run build && npm run type-check && c8 --exclude build --exclude test -r text -r html -r lcov node --test",
+    "doc": "typedoc",
+    "build": "node support/build_dist.mjs && node support/build_demo.mjs",
+    "gh-pages": "npm run build && npm run doc && gh-pages -d demo -f",
+    "prepack": "npm test && npm run doc",
+    "postpublish": "npm run gh-pages"
+  },
+  "dependencies": {
+    "uc.micro": "^3.0.0"
+  },
+  "devDependencies": {
+    "c8": "^11.0.0",
+    "eslint": "^9.39.3",
+    "gh-pages": "^6.1.0",
+    "mitata": "^1.0.34",
+    "neostandard": "^0.13.0",
+    "rollup": "^4.62.2",
+    "rollup-plugin-dts": "^6.4.1",
+    "typedoc": "^0.28.19",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.2",
+    "vite-plugin-singlefile": "^2.3.3"
+  }
+}

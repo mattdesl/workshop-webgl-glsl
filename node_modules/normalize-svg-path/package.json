@@ -1,0 +1,30 @@
+{
+  "name": "normalize-svg-path",
+  "version": "1.1.0",
+  "description": "Convert all segments in a path to curves",
+  "keywords": [
+    "svg",
+    "path",
+    "normalize"
+  ],
+  "module": "./index.mjs",
+  "main": "./index.js",
+  "exports": {
+    "require": "./index.js",
+    "import": "./index.mjs"
+  },
+  "dependencies": {
+    "svg-arc-to-cubic-bezier": "^3.0.0"
+  },
+  "devDependencies": {
+    "parse-svg-path": "^0.1.2",
+    "tape": "^4.7.0"
+  },
+  "scripts": {
+    "test": "node test.mjs"
+  },
+  "repository": "git://github.com/jkroso/normalize-svg-path.git",
+  "bugs": "https://github.com/jkroso/normalize-svg-path/issues",
+  "author": "Jake Rosoman",
+  "license": "MIT"
+}

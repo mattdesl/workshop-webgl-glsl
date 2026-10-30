@@ -1,0 +1,263 @@
+import NodeMaterial from '../../materials/nodes/NodeMaterial.js';
+import { ColorManagement } from '../../math/ColorManagement.js';
+import { vec4, renderOutput, context } from '../../nodes/TSL.js';
+import { NoToneMapping } from '../../constants.js';
+import QuadMesh from '../../renderers/common/QuadMesh.js';
+import { warnOnce } from '../../utils.js';
+
+/**
+ * This module is responsible to manage the rendering pipeline setups in apps.
+ * You usually create a single instance of this class and use it to define
+ * the output of your render pipeline and post processing effect chain.
+ * ```js
+ * const renderPipeline = new RenderPipeline( renderer );
+ *
+ * const scenePass = pass( scene, camera );
+ *
+ * renderPipeline.outputNode = scenePass;
+ * ```
+ *
+ * Note: This module can only be used with `WebGPURenderer`.
+ */
+class RenderPipeline {
+
+	/**
+	 * Constructs a new render pipeline management module.
+	 *
+	 * @param {Renderer} renderer - A reference to the renderer.
+	 * @param {Node<vec4>} outputNode - An optional output node.
+	 */
+	constructor( renderer, outputNode = vec4( 0, 0, 1, 1 ) ) {
+
+		/**
+		 * This flag can be used for type testing.
+		 *
+		 * @type {boolean}
+		 * @readonly
+		 * @default true
+		 */
+		this.isRenderPipeline = true;
+
+		/**
+		 * A reference to the renderer.
+		 *
+		 * @type {Renderer}
+		 */
+		this.renderer = renderer;
+
+		/**
+		 * A node which defines the final output of the rendering
+		 * pipeline. This is usually the last node in a chain
+		 * of effect nodes.
+		 *
+		 * @type {Node<vec4>}
+		 */
+		this.outputNode = outputNode;
+
+		/**
+		 * Whether the default output tone mapping and color
+		 * space transformation should be enabled or not.
+		 *
+		 * This is enabled by default but it must be disabled for
+		 * effects that expect to be executed after tone mapping and color
+		 * space conversion. A typical example is FXAA which
+		 * requires sRGB input.
+		 *
+		 * When set to `false`, the app must control the output
+		 * transformation with `RenderOutputNode`.
+		 *
+		 * ```js
+		 * const outputPass = renderOutput( scenePass );
+		 * ```
+		 *
+		 * @type {boolean}
+		 */
+		this.outputColorTransform = true;
+
+		/**
+		 * Must be set to `true` when the output node changes.
+		 *
+		 * @type {Node<vec4>}
+		 */
+		this.needsUpdate = true;
+
+		const material = new NodeMaterial();
+		material.name = 'RenderPipeline';
+
+		/**
+		 * The full screen quad that is used to render
+		 * the effects.
+		 *
+		 * @private
+		 * @type {QuadMesh}
+		 */
+		this._quadMesh = new QuadMesh( material );
+		this._quadMesh.name = 'Render Pipeline';
+
+		/**
+		 * The context data for the render pipeline.
+		 *
+		 * @private
+		 * @type {?Object}
+		 * @default null
+		 */
+		this._contextData = null;
+
+		/**
+		 * The current tone mapping.
+		 *
+		 * @private
+		 * @type {ToneMapping}
+		 */
+		this._toneMapping = renderer.toneMapping;
+
+		/**
+		 * The current output color space.
+		 *
+		 * @private
+		 * @type {ColorSpace}
+		 */
+		this._outputColorSpace = renderer.outputColorSpace;
+
+
+	}
+
+	/**
+	 * When `RenderPipeline` is used to apply rendering pipeline and post processing effects,
+	 * the application must use this version of `render()` inside
+	 * its animation loop (not the one from the renderer).
+	 */
+	render() {
+
+		const renderer = this.renderer;
+
+		this._update();
+
+		for ( const callback of this._contextData.onBeforePipelineCallbacks ) callback();
+
+		const toneMapping = renderer.toneMapping;
+		const outputColorSpace = renderer.outputColorSpace;
+
+		renderer.toneMapping = NoToneMapping;
+		renderer.outputColorSpace = ColorManagement.workingColorSpace;
+
+		//
+
+		const currentXR = renderer.xr.enabled;
+		renderer.xr.enabled = false;
+
+		this._quadMesh.render( renderer );
+
+		renderer.xr.enabled = currentXR;
+
+		//
+
+		renderer.toneMapping = toneMapping;
+		renderer.outputColorSpace = outputColorSpace;
+
+		for ( const callback of this._contextData.onAfterPipelineCallbacks ) callback();
+
+	}
+
+	/**
+	 * Frees internal resources.
+	 */
+	dispose() {
+
+		this._quadMesh.material.dispose();
+
+	}
+
+	/**
+	 * Updates the context data.
+	 *
+	 * @private
+	 */
+	_updateContext() {
+
+		const toneMapping = this._toneMapping;
+		const outputColorSpace = this._outputColorSpace;
+
+		const contextData = {
+			renderPipeline: this,
+			renderPipelineState: {
+				viewOffsetOwner: null
+			},
+			onBeforePipelineCallbacks: [],
+			onAfterPipelineCallbacks: []
+		};
+
+		let outputNode = this.outputNode;
+
+		if ( this.outputColorTransform === true ) {
+
+			outputNode = renderOutput( outputNode, toneMapping, outputColorSpace );
+
+		} else {
+
+			contextData.toneMapping = toneMapping;
+			contextData.outputColorSpace = outputColorSpace;
+
+		}
+
+		this._contextData = contextData;
+
+		this._quadMesh.material.contextNode = context( contextData );
+		this._quadMesh.material.fragmentNode = outputNode;
+		this._quadMesh.material.needsUpdate = true;
+
+	}
+
+	/**
+	 * Updates the state of the module.
+	 *
+	 * @private
+	 */
+	_update() {
+
+		if ( this._toneMapping !== this.renderer.toneMapping ) {
+
+			this._toneMapping = this.renderer.toneMapping;
+			this.needsUpdate = true;
+
+		}
+
+		if ( this._outputColorSpace !== this.renderer.outputColorSpace ) {
+
+			this._outputColorSpace = this.renderer.outputColorSpace;
+			this.needsUpdate = true;
+
+		}
+
+		if ( this.needsUpdate === true ) {
+
+			this._updateContext();
+
+			this.needsUpdate = false;
+
+		}
+
+	}
+
+	/**
+	 * When `RenderPipeline` is used to apply rendering pipeline and post processing effects,
+	 * the application must use this version of `renderAsync()` inside
+	 * its animation loop (not the one from the renderer).
+	 *
+	 * @async
+	 * @deprecated
+	 * @return {Promise} A Promise that resolves when the render has been finished.
+	 */
+	async renderAsync() {
+
+		warnOnce( 'RenderPipeline: "renderAsync()" has been deprecated. Use "render()" and "await renderer.init();" when creating the renderer.' ); // @deprecated r181
+
+		await this.renderer.init();
+
+		this.render();
+
+	}
+
+}
+
+export default RenderPipeline;

@@ -1,0 +1,61 @@
+{
+  "name": "three-buffer-vertex-data",
+  "version": "1.1.0",
+  "description": "an easy way to set vertex data on a BufferGeometry",
+  "main": "index.js",
+  "license": "MIT",
+  "author": {
+    "name": "Matt DesLauriers",
+    "email": "dave.des@gmail.com",
+    "url": "https://github.com/mattdesl"
+  },
+  "dependencies": {
+    "flatten-vertex-data": "^1.0.0"
+  },
+  "devDependencies": {
+    "baboon-image-uri": "^1.0.1",
+    "browserify": "^12.0.1",
+    "budo": "^7.0.0",
+    "img": "^1.0.0",
+    "primitive-quad": "^1.0.1",
+    "primitive-sphere": "^2.0.0",
+    "primitive-torus": "^1.0.4",
+    "three": "^0.73.0",
+    "three-orbit-viewer": "^69.3.1",
+    "uglify-js": "^2.6.1"
+  },
+  "scripts": {
+    "test": "node test.js",
+    "start": "budo demo/index.js:bundle.js --live",
+    "build": "browserify demo/index.js | uglifyjs -cm > bundle.js"
+  },
+  "standard": {
+    "globals": [
+      "THREE"
+    ]
+  },
+  "keywords": [
+    "buffer",
+    "geometry",
+    "BufferGeometry",
+    "three",
+    "webgl",
+    "js",
+    "threejs",
+    "three.js",
+    "data",
+    "vertex",
+    "vert",
+    "vertices",
+    "dynamic",
+    "bufferdata"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Jam3/three-buffer-vertex-data.git"
+  },
+  "homepage": "https://github.com/Jam3/three-buffer-vertex-data",
+  "bugs": {
+    "url": "https://github.com/Jam3/three-buffer-vertex-data/issues"
+  }
+}

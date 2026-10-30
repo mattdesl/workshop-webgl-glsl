@@ -1,0 +1,523 @@
+import { diff, unmount, applyRef } from './index';
+import { createVNode, Fragment } from '../create-element';
+import {
+	EMPTY_OBJ,
+	EMPTY_ARR,
+	INSERT_VNODE,
+	MATCHED,
+	LIS_CANDIDATE,
+	REF_DETACHED,
+	UNDEFINED,
+	VNODE_MARKER,
+	NULL
+} from '../constants';
+import { isArray } from '../util';
+import { getDomSibling } from '../component';
+
+/**
+ * @typedef {import('../internal').ComponentChildren} ComponentChildren
+ * @typedef {import('../internal').Component} Component
+ * @typedef {import('../internal').PreactElement} PreactElement
+ * @typedef {import('../internal').VNode} VNode
+ */
+
+/**
+ * Diff the children of a virtual node
+ * @param {PreactElement} parentDom The DOM element whose children are being
+ * diffed
+ * @param {ComponentChildren[]} renderResult
+ * @param {VNode} newParentVNode The new virtual node whose children should be
+ * diff'ed against oldParentVNode
+ * @param {VNode} oldParentVNode The old virtual node whose children should be
+ * diff'ed against newParentVNode
+ * @param {object} globalContext The current context object - modified by
+ * getChildContext
+ * @param {string} namespace Current namespace of the DOM node (HTML, SVG, or MathML)
+ * @param {Array<PreactElement>} excessDomChildren
+ * @param {Array<Component>} commitQueue List of components which have callbacks
+ * to invoke in commitRoot
+ * @param {PreactElement} oldDom The current attached DOM element any new dom
+ * elements should be placed around. Likely `null` on first render (except when
+ * hydrating). Can be a sibling DOM element when diffing Fragments that have
+ * siblings. In most cases, it starts out as `oldChildren[0]._dom`.
+ * @param {boolean} isHydrating Whether or not we are in hydration
+ * @param {any[]} refQueue an array of elements needed to invoke refs
+ * @returns {PreactElement} The next sibling DOM element to insert new elements
+ */
+export function diffChildren(
+	parentDom,
+	renderResult,
+	newParentVNode,
+	oldParentVNode,
+	globalContext,
+	namespace,
+	excessDomChildren,
+	commitQueue,
+	oldDom,
+	isHydrating,
+	refQueue
+) {
+	let i,
+		/** @type {VNode} */
+		oldVNode,
+		/** @type {VNode} */
+		childVNode,
+		/** @type {PreactElement} */
+		newDom,
+		/** @type {PreactElement} */
+		firstChildDom;
+
+	// This is a compression of oldParentVNode != EMPTY_OBJ && oldParentVNode._children || EMPTY_ARR
+	// as EMPTY_OBJ._children should be `undefined`. Callers always pass at
+	// least EMPTY_OBJ, so a null check isn't needed.
+	/** @type {VNode[]} */
+	let oldChildren = oldParentVNode._children || EMPTY_ARR;
+
+	let newChildrenLength = renderResult.length;
+
+	oldDom = constructNewChildrenArray(
+		newParentVNode,
+		renderResult,
+		oldChildren,
+		oldDom,
+		newChildrenLength
+	);
+
+	for (i = 0; i < newChildrenLength; i++) {
+		childVNode = newParentVNode._children[i];
+		if (childVNode == NULL) continue;
+
+		// At this point, constructNewChildrenArray has assigned _index to be the
+		// matchingIndex for this VNode's oldVNode (or -1 if there is no oldVNode).
+		// ~_index guards the -1 case: a negative array index is a named property
+		// access which V8 can't serve from the fast elements path.
+		oldVNode =
+			(~childVNode._index && oldChildren[childVNode._index]) || EMPTY_OBJ;
+
+		// Update childVNode._index to its final index
+		childVNode._index = i;
+
+		// Morph the old element into the new one, but don't append it to the dom yet
+		let result = diff(
+			parentDom,
+			childVNode,
+			oldVNode,
+			globalContext,
+			namespace,
+			excessDomChildren,
+			commitQueue,
+			oldDom,
+			isHydrating,
+			refQueue
+		);
+
+		// Adjust DOM nodes
+		newDom = childVNode._dom;
+		// A ref detached while its subtree was parked by Suspense is attached
+		// again on reveal.
+		if (oldVNode.ref != childVNode.ref || oldVNode._flags & REF_DETACHED) {
+			if (oldVNode.ref) applyRef(oldVNode.ref, NULL, childVNode, oldVNode);
+			if (childVNode.ref) {
+				refQueue.push(
+					childVNode.ref,
+					childVNode._component || newDom,
+					childVNode
+				);
+			}
+		}
+
+		firstChildDom = firstChildDom || newDom;
+
+		if (childVNode._flags & INSERT_VNODE) {
+			oldDom = insert(childVNode, oldDom, parentDom, !oldVNode._original);
+
+			// When a matched VNode is physically moved via INSERT_VNODE, its old
+			// _dom pointer becomes a stale positional reference. Clear it so that
+			// getDomSibling (called from nested diffs) won't return this stale
+			// reference and mis-place subsequent DOM nodes. See #5065.
+			if (oldVNode._dom) {
+				oldVNode._dom = NULL;
+			}
+		} else if (typeof childVNode.type == 'function' && result !== UNDEFINED) {
+			oldDom = result;
+		} else if (newDom) {
+			oldDom = newDom.nextSibling;
+		}
+
+		// Clear placement and LIS flags; MATCHED only belongs to old vnodes.
+		childVNode._flags &= ~(INSERT_VNODE | LIS_CANDIDATE);
+	}
+
+	newParentVNode._dom = firstChildDom;
+
+	return oldDom;
+}
+
+/**
+ * @param {VNode} newParentVNode
+ * @param {ComponentChildren[]} renderResult
+ * @param {VNode[]} oldChildren
+ */
+function constructNewChildrenArray(
+	newParentVNode,
+	renderResult,
+	oldChildren,
+	oldDom,
+	newChildrenLength
+) {
+	/** @type {number} */
+	let i;
+	/** @type {VNode} */
+	let childVNode;
+	/** @type {VNode} */
+	let oldVNode;
+
+	let oldChildrenLength = oldChildren.length,
+		remainingOldChildren = oldChildrenLength;
+
+	let skew = 0;
+
+	/** Whether any matched child was found far from its skewed index, i.e. a
+	 * real reorder happened and we need to compute the minimal set of moves. */
+	let moved = 0;
+
+	// Hoisted: every normalization branch below writes through this array, so
+	// reading `_children` off the vnode each time is a wasted property load.
+	/** @type {VNode[]} */
+	let newChildren = (newParentVNode._children = Array(newChildrenLength));
+	for (i = 0; i < newChildrenLength; i++) {
+		// @ts-expect-error We are reusing the childVNode variable to hold both the
+		// pre and post normalized childVNode
+		childVNode = renderResult[i];
+
+		if (
+			childVNode == NULL ||
+			typeof childVNode == 'boolean' ||
+			typeof childVNode == 'function'
+		) {
+			newChildren[i] = NULL;
+			continue;
+		}
+		// If this newVNode is being reused (e.g. <div>{reuse}{reuse}</div>) in the same diff,
+		// or we are rendering a component (e.g. setState) copy the oldVNodes so it can have
+		// it's own DOM & etc. pointers
+		// Anything that isn't an object at this point is a string, number or
+		// bigint (null, booleans and functions are handled above), String
+		// objects are the lone object type rendered as text.
+		else if (
+			typeof childVNode != 'object' ||
+			childVNode.constructor === String
+		) {
+			childVNode = newChildren[i] = createVNode(NULL, childVNode);
+		} else if (isArray(childVNode)) {
+			childVNode = newChildren[i] = createVNode(Fragment, {
+				children: childVNode
+			});
+		} else if (childVNode.constructor === VNODE_MARKER && childVNode._depth) {
+			// VNode is already in use, clone it. This can happen in the following
+			// scenario:
+			//   const reuse = <div />
+			//   <div>{reuse}<span />{reuse}</div>
+			childVNode = newChildren[i] = createVNode(
+				childVNode.type,
+				childVNode.props,
+				childVNode.key,
+				childVNode.ref,
+				childVNode._original
+			);
+		} else {
+			newChildren[i] = childVNode;
+		}
+
+		const skewedIndex = i + skew;
+		childVNode._parent = newParentVNode;
+		childVNode._depth = newParentVNode._depth + 1;
+
+		// Temporarily store the matchingIndex on the _index property so we can pull
+		// out the oldVNode in diffChildren. We'll override this to the VNode's
+		// final index after using this property to get the oldVNode
+		const matchingIndex = (childVNode._index = findMatchingIndex(
+			childVNode,
+			oldChildren,
+			skewedIndex,
+			remainingOldChildren
+		));
+
+		oldVNode = NULL;
+		// ~matchingIndex is only falsy for -1, i.e. when no match was found
+		if (~matchingIndex) {
+			oldVNode = oldChildren[matchingIndex];
+			remainingOldChildren--;
+			if (oldVNode) {
+				oldVNode._flags |= MATCHED;
+			}
+		}
+
+		// Here, we define isMounting for the purposes of the skew diffing
+		// algorithm. Nodes that are unsuspending are considered mounting and we detect
+		// this by checking if oldVNode._original == null
+		if (!oldVNode || !oldVNode._original) {
+			if (!~matchingIndex) {
+				// When the array of children is growing we need to decrease the skew
+				// as we are adding a new element to the array.
+				// Example:
+				// [1, 2, 3] --> [0, 1, 2, 3]
+				// oldChildren   newChildren
+				//
+				// The new element is at index 0, so our skew is 0,
+				// we need to decrease the skew as we are adding a new element.
+				// The decrease will cause us to compare the element at position 1
+				// with value 1 with the element at position 0 with value 0.
+				//
+				// A linear concept is applied when the array is shrinking,
+				// if the length is unchanged we can assume that no skew
+				// changes are needed.
+				if (newChildrenLength > oldChildrenLength) {
+					skew--;
+				} else if (newChildrenLength < oldChildrenLength) {
+					skew++;
+				}
+			}
+
+			// If we are mounting a DOM VNode, mark it for insertion
+			if (typeof childVNode.type != 'function') {
+				childVNode._flags |= INSERT_VNODE;
+			}
+		} else {
+			// Keep LIS eligibility separate from MATCHED on old vnodes: if a child
+			// throws, uncleared new-vnode flags must not prevent the next match.
+			childVNode._flags |= LIS_CANDIDATE;
+
+			// Center the next search for shifts. Only matches farther than one
+			// position away require the minimal-move pass.
+			if (matchingIndex == skewedIndex - 1) {
+				skew--;
+			} else if (matchingIndex == skewedIndex + 1) {
+				skew++;
+			} else if (matchingIndex != skewedIndex) {
+				if (matchingIndex > skewedIndex) {
+					skew--;
+				} else {
+					skew++;
+				}
+
+				moved = 1;
+			}
+		}
+	}
+
+	if (moved) {
+		// Children were reordered: mark the minimal set of matched (LIS_CANDIDATE flag)
+		// children for insertion by finding the longest increasing subsequence of
+		// old indices (patience sorting). Children on the subsequence stay in
+		// place, all others get INSERT_VNODE. `_index` still holds the
+		// matchingIndex here.
+		/** @type {number[]} tails[x] is the smallest old index ending an increasing subsequence of length x+1 */
+		let tails = [];
+		/** @type {number[]} length of the longest increasing subsequence ending at child i */
+		let lisLengths = [];
+		for (i = 0; i < newChildrenLength; i++) {
+			childVNode = newChildren[i];
+			if (childVNode && childVNode._flags & LIS_CANDIDATE) {
+				// Binary search for the insertion point, keeping the pass at
+				// O(n log n) even for pathological reorders.
+				skew = 0;
+				let hi = tails.length;
+				while (skew < hi) {
+					const mid = (skew + hi) >> 1;
+					if (tails[mid] < childVNode._index) {
+						skew = mid + 1;
+					} else {
+						hi = mid;
+					}
+				}
+				tails[skew] = childVNode._index;
+				lisLengths[i] = skew + 1;
+			}
+		}
+
+		// `skew` is dead after the main loop; reuse it as the remaining
+		// subsequence length while walking backwards. Likewise `i` is left at
+		// newChildrenLength by the loop above.
+		skew = tails.length;
+		while (i--) {
+			if (lisLengths[i]) {
+				if (lisLengths[i] == skew) {
+					skew--;
+				} else {
+					newChildren[i]._flags |= INSERT_VNODE;
+				}
+			}
+		}
+	}
+
+	// Remove remaining oldChildren if there are any. Loop forwards so that as we
+	// unmount DOM from the beginning of the oldChildren, we can adjust oldDom to
+	// point to the next child, which needs to be the first DOM node that won't be
+	// unmounted. Keep this a plain loop: an arrow function here would capture
+	// `oldDom`, forcing V8 to context-allocate it on every call to this function.
+	if (remainingOldChildren) {
+		for (i = 0; i < oldChildrenLength; i++) {
+			oldVNode = oldChildren[i];
+			if (oldVNode && !(oldVNode._flags & MATCHED)) {
+				if (oldVNode._dom == oldDom) {
+					oldDom = getDomSibling(oldVNode);
+				}
+
+				unmount(oldVNode, oldVNode);
+			}
+		}
+	}
+
+	return oldDom;
+}
+
+/**
+ * @param {VNode} parentVNode
+ * @param {PreactElement} oldDom
+ * @param {PreactElement} parentDom
+ * @param {boolean} isMounting
+ * @returns {PreactElement}
+ */
+function insert(parentVNode, oldDom, parentDom, isMounting) {
+	// Note: VNodes in nested suspended trees may be missing _children.
+	if (typeof parentVNode.type == 'function') {
+		// Root children live in another container, they never move with the
+		// host tree and contribute nothing to the host insertion cursor.
+		if (parentVNode.props._parentDom) return oldDom;
+		let children = parentVNode._children;
+		if (children) {
+			for (let i = 0; i < children.length; i++) {
+				if (children[i]) {
+					// If we enter this code path on sCU bailout, where we copy
+					// oldVNode._children to newVNode._children, we need to update the old
+					// children's _parent pointer to point to the newVNode (parentVNode
+					// here).
+					children[i]._parent = parentVNode;
+					oldDom = insert(children[i], oldDom, parentDom, false);
+				}
+			}
+		}
+
+		return oldDom;
+	} else {
+		// A cursor a parked Suspense subtree detached can't be a reference node:
+		// retry from the vnode tree, then give up and append.
+		if (oldDom && !oldDom.parentNode) {
+			oldDom = getDomSibling(parentVNode);
+			if (oldDom && !oldDom.parentNode) oldDom = NULL;
+		}
+
+		// Comments (e.g. server `$s` markers) are never ours: a node right after
+		// them is already in place.
+		let dom = parentVNode._dom;
+		let next = oldDom;
+		while (next && next.nodeType == 8) next = next.nextSibling;
+
+		if (dom != next) {
+			// Containers that aren't DOM nodes may not implement moveBefore()
+			if (!isMounting && parentDom.moveBefore && dom.parentNode) {
+				// @ts-expect-error This isn't added to TypeScript lib.d.ts yet
+				parentDom.moveBefore(dom, oldDom);
+			} else {
+				parentDom.insertBefore(dom, oldDom || NULL);
+			}
+		}
+		oldDom = dom;
+	}
+
+	while (
+		(oldDom = oldDom && oldDom.nextSibling) &&
+		oldDom.nodeType == 8 &&
+		!oldDom.data.startsWith('$s')
+	);
+
+	return oldDom;
+}
+
+/**
+ * Flatten and loop through the children of a virtual node
+ * @param {ComponentChildren} children The unflattened children of a virtual
+ * node
+ * @returns {VNode[]}
+ */
+export function toChildArray(children, out) {
+	out = out || [];
+	if (children != NULL && typeof children != 'boolean') {
+		if (isArray(children)) {
+			children.some(child => {
+				toChildArray(child, out);
+			});
+		} else {
+			out.push(children);
+		}
+	}
+	return out;
+}
+
+/**
+ * @param {VNode} childVNode
+ * @param {VNode[]} oldChildren
+ * @param {number} skewedIndex
+ * @param {number} remainingOldChildren
+ * @returns {number}
+ */
+function findMatchingIndex(
+	childVNode,
+	oldChildren,
+	skewedIndex,
+	remainingOldChildren
+) {
+	const key = childVNode.key;
+	const type = childVNode.type;
+	let oldVNode = oldChildren[skewedIndex];
+	const matched = oldVNode && !(oldVNode._flags & MATCHED);
+
+	// We only need to perform a search if there are more children
+	// (remainingOldChildren) to search. However, if the oldVNode we just looked
+	// at skewedIndex was not already used in this diff, then there must be at
+	// least 1 other (so greater than 1) remainingOldChildren to attempt to match
+	// against. So the following condition checks that ensuring
+	// remainingOldChildren > 1 if the oldVNode is not already used/matched. Else
+	// if the oldVNode was null or matched, then there could needs to be at least
+	// 1 (aka `remainingOldChildren > 0`) children to find and compare against.
+	//
+	// If there is an unkeyed functional VNode, that isn't a built-in like our Fragment,
+	// we should not search as we risk re-using state of an unrelated VNode. (reverted for now)
+	let shouldSearch =
+		// (typeof type != 'function' || type === Fragment || key) &&
+		// The ternary keeps this a Smi comparison; `> matched` would compare
+		// number to boolean which V8 can't serve from the fast path.
+		remainingOldChildren > (matched ? 1 : 0);
+
+	if (
+		(oldVNode === NULL && key == NULL) ||
+		(matched && key == oldVNode.key && type == oldVNode.type)
+	) {
+		return skewedIndex;
+	} else if (shouldSearch) {
+		let x;
+		for (x = skewedIndex - 1; x >= 0; x--) {
+			oldVNode = oldChildren[x];
+			if (
+				oldVNode &&
+				!(oldVNode._flags & MATCHED) &&
+				key == oldVNode.key &&
+				type == oldVNode.type
+			)
+				return x;
+		}
+		for (x = skewedIndex + 1; x < oldChildren.length; x++) {
+			oldVNode = oldChildren[x];
+			if (
+				oldVNode &&
+				!(oldVNode._flags & MATCHED) &&
+				key == oldVNode.key &&
+				type == oldVNode.type
+			)
+				return x;
+		}
+	}
+
+	return -1;
+}

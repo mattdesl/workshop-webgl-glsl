@@ -1,0 +1,20 @@
+{
+  "name": "normalize-svg-path",
+  "version": "0.1.0",
+  "description": "convert all segments in a path to curves",
+  "keywords": ["svg","path","normalize"],
+  "dependencies": {},
+  "devDependencies": {
+    "serve": "jkroso/serve",
+    "dom": "component/dom",
+    "parse-svg-path": "*",
+    "equals": "*",
+    "mocha": "*",
+    "jsmd": "*"
+  },
+  "repository": "git://github.com/jkroso/normalize-svg-path.git",
+  "bugs": "https://github.com/jkroso/normalize-svg-path/issues",
+  "author": "Jake Rosoman",
+  "files": ["index.js"],
+  "license": "MIT"
+}
