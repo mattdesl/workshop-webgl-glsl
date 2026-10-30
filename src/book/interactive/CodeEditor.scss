@@ -1,0 +1,303 @@
+.CodeEditor {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--editor-bg);
+  color: var(--editor-text);
+  transition: background-color 420ms var(--ease-out), color 420ms var(--ease-out);
+}
+
+.CodeEditor > .CopyCodeButton {
+  top: 8px;
+  right: 8px;
+}
+
+.CodeEditorContainer {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+}
+
+.CodeEditorErrorToast {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  z-index: 1001;
+  max-width: calc(100% - 24px);
+  padding: 9px 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--white);
+  color: var(--page);
+  font-size: 0.75em;
+  overflow-wrap: anywhere;
+}
+
+.cm-editor {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-left: 1px solid var(--line);
+  background: var(--editor-bg);
+  color: var(--editor-text);
+  font-family: 'Hack', 'Courier New', monospace;
+  font-size: 0.84em;
+  transition: background-color 420ms var(--ease-out), color 420ms var(--ease-out), border-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out), font-size 280ms var(--ease-out);
+}
+
+.cm-editor.cm-focused {
+  z-index: 1;
+  border-left-color: var(--white);
+  outline: 1px solid var(--white);
+  outline-offset: -1px;
+}
+
+.cm-scroller {
+  overflow: auto;
+  font-family: inherit;
+  line-height: 1.7;
+  scrollbar-color: var(--line-strong) var(--editor-bg);
+  scrollbar-width: thin;
+}
+
+.cm-content {
+  min-height: 100%;
+  padding: 18px 20px;
+  caret-color: var(--white);
+}
+
+.cm-line {
+  padding: 0;
+}
+
+.cm-cursor,
+.cm-dropCursor {
+  border-left-color: var(--white) ;
+}
+
+.CodeEditor .cm-editor .cm-selectionBackground {
+  background: transparent;
+}
+
+.CodeEditor .cm-editor.cm-focused .cm-selectionBackground {
+  background: var(--editor-selection);
+}
+
+// CodeMirror hides native selections while blurred; page-wide Ctrl+A needs a visible fill.
+.CodeEditor .cm-editor:not(.cm-focused) .cm-line ::selection,
+.CodeEditor .cm-editor:not(.cm-focused) .cm-line::selection {
+  background: var(--editor-selection) !important;
+}
+
+.cm-token-keyword {
+  color: var(--token-keyword);
+  font-weight: 600;
+}
+
+.cm-token-type {
+  color: var(--token-type);
+}
+
+.cm-token-function {
+  color: var(--token-function);
+  font-weight: 600;
+}
+
+.cm-token-variable {
+  color: var(--token-variable);
+}
+
+.cm-token-property {
+  color: var(--token-property);
+}
+
+.cm-token-operator {
+  color: var(--token-operator);
+}
+
+.cm-token-number,
+.cm-token-atom {
+  color: var(--token-number);
+}
+
+.cm-token-atom {
+  font-weight: 600;
+}
+
+.cm-token-string {
+  color: var(--token-string);
+}
+
+.cm-token-comment {
+  color: var(--token-comment);
+  font-style: italic;
+}
+
+.cm-token-meta {
+  color: var(--token-meta);
+}
+
+:root[data-theme='night'] .CodeEditor .cm-content .cm-token-keyword::selection {
+  color: var(--token-keyword-selection);
+}
+
+:root[data-theme='night'] .CodeEditor .cm-content .cm-token-type::selection {
+  color: var(--token-type-selection);
+}
+
+:root[data-theme='night'] .CodeEditor .cm-content .cm-token-function::selection {
+  color: var(--token-function-selection);
+}
+
+:root[data-theme='night'] .CodeEditor .cm-content .cm-token-variable::selection {
+  color: var(--token-variable-selection);
+}
+
+:root[data-theme='night'] .CodeEditor .cm-content .cm-token-property::selection {
+  color: var(--token-property-selection);
+}
+
+:root[data-theme='night'] .CodeEditor .cm-content .cm-token-operator::selection {
+  color: var(--token-operator-selection);
+}
+
+:root[data-theme='night'] .CodeEditor .cm-content .cm-token-number::selection,
+:root[data-theme='night'] .CodeEditor .cm-content .cm-token-atom::selection {
+  color: var(--token-number-selection);
+}
+
+:root[data-theme='night'] .CodeEditor .cm-content .cm-token-string::selection {
+  color: var(--token-string-selection);
+}
+
+:root[data-theme='night'] .CodeEditor .cm-content .cm-token-comment::selection {
+  color: var(--token-comment-selection);
+}
+
+:root[data-theme='night'] .CodeEditor .cm-content .cm-token-meta::selection {
+  color: var(--token-meta-selection);
+}
+
+.cm-activeLine {
+  background: var(--editor-active-line);
+}
+
+.cm-gutters {
+  border-right: 1px solid var(--line);
+  background: var(--surface-raised);
+  color: var(--editor-muted);
+}
+
+.cm-activeLineGutter {
+  background: var(--widget-hover);
+  color: var(--ink);
+}
+
+.cm-matchingBracket {
+  outline: 1px solid var(--line-strong);
+  background: var(--hover-fill);
+  color: var(--ink) ;
+}
+
+.cm-dynamic-variable {
+  color: var(--white);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.cm-third-party {
+  color: var(--muted);
+}
+
+:root[data-theme='night'] .CodeEditor .cm-content .cm-dynamic-variable::selection {
+  color: var(--token-dynamic-selection);
+}
+
+:root[data-theme='night'] .CodeEditor .cm-content .cm-third-party::selection {
+  color: var(--token-third-party-selection);
+}
+
+:root:not([data-theme='night']) .CodeEditor .cm-content .cm-token-keyword::selection {
+  color: var(--token-keyword);
+}
+
+:root:not([data-theme='night']) .CodeEditor .cm-content .cm-token-type::selection {
+  color: var(--token-type);
+}
+
+:root:not([data-theme='night']) .CodeEditor .cm-content .cm-token-function::selection {
+  color: var(--token-function);
+}
+
+:root:not([data-theme='night']) .CodeEditor .cm-content .cm-token-variable::selection {
+  color: var(--token-variable);
+}
+
+:root:not([data-theme='night']) .CodeEditor .cm-content .cm-token-property::selection {
+  color: var(--token-property);
+}
+
+:root:not([data-theme='night']) .CodeEditor .cm-content .cm-token-operator::selection {
+  color: var(--token-operator);
+}
+
+:root:not([data-theme='night']) .CodeEditor .cm-content .cm-token-number::selection,
+:root:not([data-theme='night']) .CodeEditor .cm-content .cm-token-atom::selection {
+  color: var(--token-number);
+}
+
+:root:not([data-theme='night']) .CodeEditor .cm-content .cm-token-string::selection {
+  color: var(--token-string);
+}
+
+:root:not([data-theme='night']) .CodeEditor .cm-content .cm-token-comment::selection {
+  color: var(--token-comment);
+}
+
+:root:not([data-theme='night']) .CodeEditor .cm-content .cm-token-meta::selection {
+  color: var(--token-meta);
+}
+
+:root:not([data-theme='night']) .CodeEditor .cm-content::selection,
+:root:not([data-theme='night']) .CodeEditor .cm-content *::selection {
+  color: var(--editor-text);
+}
+
+:root:not([data-theme='night']) .CodeEditor .cm-content .cm-dynamic-variable::selection {
+  color: var(--white);
+}
+
+:root:not([data-theme='night']) .CodeEditor .cm-content .cm-third-party::selection {
+  color: var(--muted);
+}
+
+.CodeMirror.has-runtime-error::after {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--line-strong);
+  content: '';
+  pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  .cm-editor {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .cm-editor.cm-focused {
+    border-top-color: var(--white);
+  }
+
+  .cm-content {
+    padding: 15px 14px;
+  }
+}
