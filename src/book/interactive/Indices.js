@@ -1,39 +1,51 @@
 /** @jsx h */
-const { h } = require('preact');
-const Random = require('canvas-sketch-util/random');
-const Color = require('canvas-sketch-util/color');
-const { linspace, lerp } = require('canvas-sketch-util/math');
-const InteractiveComponent = require('./InteractiveComponent');
-const createCartesianGrid = require('./createCartesianGrid');
-const UI = require('../util/UI');
-const createLine3D = require('../util/createLine3D');
-const quaternionFromDirection = require('../util/quaternionFromDirection');
-const { addBarycentricCoordinates, unindexBufferGeometry } = require('../util/wireGeomUtil');
-const THREEDOMText = require('../util/THREEDOMText');
-const deepEqual = require('fast-deep-equal');
-const cloneDeep = require('clone-deep');
+import { h } from "preact";
+import * as THREE from "three";
+import InteractiveComponent from "./InteractiveComponent";
+import { executeSafeJavaScript } from "./safeJavaScript";
+import createCartesianGrid from "./createCartesianGrid";
+import UI from "../util/UI";
+import createLine3D from "../util/createLine3D";
+import quaternionFromDirection from "../util/quaternionFromDirection";
+import {
+  addBarycentricCoordinates,
+  unindexBufferGeometry,
+} from "../util/wireGeomUtil";
+import THREEDOMText from "../util/THREEDOMText";
+import deepEqual from "fast-deep-equal";
 
 const settings = {
   animate: false,
-  context: 'webgl',
-  attributes: { antialias: true }
+  context: "webgl2",
+  attributes: { antialias: true },
 };
 
-const evaluate = (code, params) => {
-  /* eslint no-eval: 0 */
-  const str = [
-    `;(function () {`,
-    ``,
-    code,
-    ';',
-    `if (typeof vertices === 'undefined') throw new Error("You need to define a 'vertices' array");`,
-    `if (!Array.isArray(vertices)) throw new Error("'vertices' should be an array");`,
-    `if (typeof indices === 'undefined') return { vertices };`,
-    `return { indices, vertices };`,
-    '})();'
-  ].join('\n');
-  return eval(str);
-}
+/**
+ * @typedef {Object} IndicesResult
+ * @property {unknown[]} vertices
+ * @property {unknown} [indices]
+ */
+
+/**
+ * Interprets the editor's JavaScript and validates its vertex data.
+ *
+ * @param {string} code User-provided JavaScript text.
+ * @param {Record<string, unknown>} _params Unused component parameters.
+ * @returns {IndicesResult} The validated vertex and optional index data.
+ */
+const evaluate = (code, _params) => {
+  const data = executeSafeJavaScript(code);
+  const { vertices, indices } = data;
+  if (typeof vertices === "undefined") {
+    throw new Error("You need to define a 'vertices' array");
+  }
+  if (!Array.isArray(vertices)) {
+    throw new Error("'vertices' should be an array");
+  }
+  if (typeof indices === "undefined") return { vertices };
+  return { indices, vertices };
+};
+
 
 const sketch = (props) => {
   const { params } = props.data || {};
@@ -41,25 +53,23 @@ const sketch = (props) => {
 
   const grid = createCartesianGrid({
     ...props,
-    showSubdivisions: false
+    showSubdivisions: false,
   });
 
   const vertGeometry = new THREE.SphereGeometry(1, 64, 64);
   const coneGeometry = new THREE.ConeGeometry(0.5, 1, 16, 8);
   const fillGeometry = new THREE.BufferGeometry();
   const fillMaterial = new THREE.ShaderMaterial({
+    glslVersion: THREE.GLSL3,
     uniforms: {
-      wire: { value: false, type: 'b' },
+      wire: { value: false, type: "b" },
       wireThickness: { value: 3 },
       front: { value: new THREE.Color() },
-      back: { value: new THREE.Color() }
-    },
-    extensions: {
-      derivatives: true
+      back: { value: new THREE.Color() },
     },
     vertexShader: `
-      attribute vec3 barycentric;
-      varying vec3 vBarycentric;
+      in vec3 barycentric;
+      out vec3 vBarycentric;
       void main () {
         vBarycentric = barycentric;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position.xyz, 1.0);
@@ -70,7 +80,8 @@ const sketch = (props) => {
       uniform vec3 back;
       uniform bool wire;
       uniform float wireThickness;
-      varying vec3 vBarycentric;
+      in vec3 vBarycentric;
+      out vec4 fragColor;
 
       float aastep (float threshold, float dist) {
         float afwidth = fwidth(dist) * 0.5;
@@ -89,12 +100,12 @@ const sketch = (props) => {
         float edge = 1.0 - aastep(0.01, d);
         //float edge = computeScreenSpaceWireframe(vBarycentric, wireThickness);
 
-        gl_FragColor = vec4(gl_FrontFacing ? front : back, 1.0);
-        if (wire) gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.0), edge);
+        fragColor = vec4(gl_FrontFacing ? front : back, 1.0);
+        if (wire) fragColor.rgb = mix(fragColor.rgb, vec3(0.0), edge);
       }
     `,
     transparent: true,
-    side: THREE.DoubleSide
+    side: THREE.DoubleSide,
   });
   const fillMesh = new THREE.Mesh(fillGeometry, fillMaterial);
   if (fill) grid.vertexGroup.add(fillMesh);
@@ -107,11 +118,11 @@ const sketch = (props) => {
   let wasEvalError = undefined;
 
   return {
-    resize (props) {
+    resize(props) {
       grid.resize(props);
-      lines.forEach(line => line.resize(props));
+      lines.forEach((line) => line.resize(props));
     },
-    evalDidChange (props) {
+    evalDidChange(props) {
       const { canvas, width, height } = props;
       const { evaluateResult, params } = props.data || {};
       const { fill, wireframe, perspective, rotation, front, back } = params;
@@ -120,12 +131,15 @@ const sketch = (props) => {
       if (evaluateResult && evaluateResult.vertices) {
         for (let i = 0; i < evaluateResult.vertices.length; i++) {
           const v = evaluateResult.vertices[i];
-          const vertex = new THREE.Mesh(vertGeometry, new THREE.MeshBasicMaterial({
-            color: v.color || 'black',
-            transparent: true,
-            depthTest: false,
-            depthWrite: false
-          }));
+          const vertex = new THREE.Mesh(
+            vertGeometry,
+            new THREE.MeshBasicMaterial({
+              color: v.color || "black",
+              transparent: true,
+              depthTest: false,
+              depthWrite: false,
+            }),
+          );
           if (Array.isArray(v.position)) {
             vertex.position.fromArray(v.position);
           }
@@ -154,14 +168,22 @@ const sketch = (props) => {
         }
 
         if (fill) {
-          if (evaluateResult && evaluateResult.indices && evaluateResult.vertices) {
-            const fillFaces = faces.filter(f => f.length === 3).reduce((a, b) => a.concat(b), []);
+          if (
+            evaluateResult &&
+            evaluateResult.indices &&
+            evaluateResult.vertices
+          ) {
+            const fillFaces = faces
+              .filter((f) => f.length === 3)
+              .reduce((a, b) => a.concat(b), []);
             const indices = new Uint16Array(fillFaces);
-            const positions = evaluateResult.vertices.map(p => (p.position || [ 0, 0, 0 ]));
+            const positions = evaluateResult.vertices.map(
+              (p) => p.position || [0, 0, 0],
+            );
             const positionArray = flatten(positions, Float32Array);
             const indexBuf = new THREE.BufferAttribute(indices, 1);
             const posBuf = new THREE.BufferAttribute(positionArray, 3);
-            fillGeometry.addAttribute('position', posBuf);
+            fillGeometry.setAttribute("position", posBuf);
             fillGeometry.setIndex(indexBuf);
             unindexBufferGeometry(fillGeometry);
             addBarycentricCoordinates(fillGeometry, false);
@@ -169,7 +191,7 @@ const sketch = (props) => {
           }
         }
 
-        faces.forEach(face => {
+        faces.forEach((face) => {
           if (fill && face.length >= 3) return;
 
           const length = face.length >= 3 ? face.length : face.length - 1;
@@ -182,10 +204,10 @@ const sketch = (props) => {
 
             const line = createLine3D({
               dash: isDash,
-              color: isDash ? 'hsl(0, 0%, 75%)' : '#4B87FF',
-              thickness: grid.gridLineWidth * 1
+              color: isDash ? "hsl(0, 0%, 75%)" : "#4B87FF",
+              thickness: grid.gridLineWidth * 1,
             });
-            line.update([ vertices[a], vertices[b] ]);
+            line.update([vertices[a], vertices[b]]);
             lines.push(line);
           }
 
@@ -194,12 +216,15 @@ const sketch = (props) => {
             const b = face[(i + 1) % face.length] || 0;
             const V0 = vertices[a].position;
             const V1 = vertices[b].position;
-            const cone = new THREE.Mesh(coneGeometry, new THREE.MeshBasicMaterial({
-              color: '#4B87FF',
-              transparent: true,
-              // depthTest: false,
-              // depthWrite: false
-            }));
+            const cone = new THREE.Mesh(
+              coneGeometry,
+              new THREE.MeshBasicMaterial({
+                color: "#4B87FF",
+                transparent: true,
+                // depthTest: false,
+                // depthWrite: false
+              }),
+            );
             cone.position.copy(V1);
             cone.scale.setScalar(1 * grid.cellSize);
             const dir = V1.clone().sub(V0).normalize();
@@ -210,15 +235,15 @@ const sketch = (props) => {
         });
       }
 
-      lines.forEach(line => grid.vertexGroup.add(line.object));
-      vertices.forEach(v => grid.vertexGroup.add(v));
-      arrowCaps.forEach(cap => grid.vertexGroup.add(cap));
+      lines.forEach((line) => grid.vertexGroup.add(line.object));
+      vertices.forEach((v) => grid.vertexGroup.add(v));
+      arrowCaps.forEach((cap) => grid.vertexGroup.add(cap));
     },
-    onRuntimeError () {
+    onRuntimeError() {
       oldResult = {};
       wasEvalError = undefined;
     },
-    render (props) {
+    render(props) {
       const { canvas, width, height } = props;
       const { evaluateResult, evaluateError, params } = props.data || {};
       const { fill, wireframe, perspective, rotation, front, back } = params;
@@ -228,88 +253,122 @@ const sketch = (props) => {
       fillMaterial.uniforms.wire.value = Boolean(wireframe);
 
       const isEvalError = Boolean(evaluateError);
-      const didChange = !deepEqual(oldResult, evaluateResult) || (wasEvalError != isEvalError);
+      const didChange =
+        !deepEqual(oldResult, evaluateResult) || wasEvalError != isEvalError;
       if (didChange) {
         this.evalDidChange(props);
         wasEvalError = isEvalError;
         oldResult = evaluateResult;
       }
 
-
-      grid.group.rotation.y = rotation * Math.PI / 2;
+      grid.group.rotation.y = (rotation * Math.PI) / 2;
       grid.render({
         ...props,
-        perspective
+        perspective,
       });
 
-      texts.forEach(text => {
+      texts.forEach((text) => {
         text.update({
           ...props,
           object: text.vertex,
-          color: 'white',
+          color: "white",
           // position: new THREE.Vector3(0.1, 0, 0.05),
           // offset: [ 10, 5 ],
           fontSize: 1,
           scale: 0.75,
-          text: text.index
+          text: text.index,
         });
       });
     },
-    unload (props) {
+    unload(props) {
       clear();
       grid.unload(props);
-    }
+    },
   };
 
-  function clear () {
+  function clear() {
     fillMesh.visible = false;
-    texts.forEach(t => {
+    texts.forEach((t) => {
       t.dispose();
     });
-    vertices.forEach(v => {
+    vertices.forEach((v) => {
       grid.vertexGroup.remove(v);
     });
     vertices.length = 0;
-    arrowCaps.forEach(v => {
+    arrowCaps.forEach((v) => {
       grid.vertexGroup.remove(v);
     });
     arrowCaps.length = 0;
-    lines.forEach(line => {
+    lines.forEach((line) => {
       line.dispose();
       grid.vertexGroup.remove(line.object);
     });
     lines.length = 0;
   }
+};
+// 1. Define the parameters layout cleanly outside the component scope
+class ParamsConfig {
+  constructor(fill) {
+    this.fill = fill;
+
+    // Assign fallback default values to fields
+    this.perspective = 1;
+    this.rotation = 0;
+    this.front = "#4B87FF";
+    this.back = "#FF5FD2";
+    this.wireframe = true;
+  }
+
+  @UI.Slider({ visible: false, min: 0, max: 1, step: 0.01 })
+  perspective;
+
+  @UI.Slider({ min: -1, max: 1, step: 0.01 })
+  rotation;
+
+  @UI.Color({
+    visible: function () {
+      return this.fill;
+    },
+    label: "Front Face Color",
+  })
+  front;
+
+  @UI.Color({
+    visible: function () {
+      return this.fill;
+    },
+    label: "Back Face Color",
+  })
+  back;
+
+  @UI.Checkbox({
+    visible: function () {
+      return this.fill;
+    },
+  })
+  wireframe;
 }
 
-module.exports = (props) => {
+// 2. Export the interactive component wrapper safely
+export default (props) => {
   const fill = Boolean(props.fill);
-  const params = {
-    @UI.Slider({ visible: false, min: 0, max: 1, step: 0.01 })
-    perspective: 1,
-    @UI.Slider({ min: -1, max: 1, step: 0.01 })
-    rotation: 0,
-    @UI.Color({ visible: fill, label: 'Front Face Color' })
-    front: '#4B87FF',
-    @UI.Color({ visible: fill, label: 'Back Face Color' })
-    back: '#FF5FD2',
-    @UI.Checkbox({ visible: fill })
-    wireframe: true,
-    fill
-  };
-  return <InteractiveComponent
-    sketch={sketch}
-    settings={settings}
-    code={props.code}
-    evaluate={evaluate}
-    params={params}
-    showParams
-    showCode
-    showCanvas
-  />;
+  const params = new ParamsConfig(fill);
+
+  return (
+    <InteractiveComponent
+      sketch={sketch}
+      settings={settings}
+      code={props.code}
+      evaluate={evaluate}
+      params={params}
+      showParams
+      showCode
+      showCanvas
+    />
+  );
 };
 
-function flatten (array, ArrayType = Float32Array) {
+function flatten(array, ArrayType = Float32Array) {
   const output = [];
   for (let i = 0; i < array.length; i++) {
     if (Array.isArray(array[i])) {
@@ -324,11 +383,11 @@ function flatten (array, ArrayType = Float32Array) {
   return new ArrayType(output);
 }
 
-function unindex ({ cells, positions }) {
+function unindex({ cells, positions }) {
   const newPositions = [];
-  cells.forEach(cell => {
-    const vertices = cell.map(i => positions[i]);
-    vertices.forEach(v => newPositions.push(v));
+  cells.forEach((cell) => {
+    const vertices = cell.map((i) => positions[i]);
+    vertices.forEach((v) => newPositions.push(v));
   });
   return newPositions;
 }

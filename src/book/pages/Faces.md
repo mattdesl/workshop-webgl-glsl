@@ -1,9 +1,7 @@
-import { Faces } from './InteractiveComponents';
-
-export const metadata = {
-  title: 'Faces',
-  demo: Faces
-};
+---
+title: "Faces"
+demo: faces
+---
 
 By connecting 3 or more vertices, we can make up a triangle, or *face*.
 

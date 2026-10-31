@@ -1,8 +1,7 @@
-export const metadata = {
-  title: 'canvas-sketch Animations'
-};
-
-# `canvas-sketch` — Animations
+---
+title: "canvas-sketch Animations"
+heading: "canvas-sketch — Animations"
+---
 
 This is a little reminder about how to export animations with `canvas-sketch-cli`.
 

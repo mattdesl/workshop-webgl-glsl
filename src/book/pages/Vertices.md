@@ -1,9 +1,7 @@
-import { Vertices } from './InteractiveComponents.js';
-
-export const metadata = {
-  demo: Vertices,
-  title: 'Vertices'
-};
+---
+title: "Vertices"
+demo: vertices
+---
 
 So now we know what a 3D coordinate is: `(x, y, z)`.
 

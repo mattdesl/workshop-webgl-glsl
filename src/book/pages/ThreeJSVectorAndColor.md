@@ -1,9 +1,7 @@
-import { THREEVectorAndColor } from './InteractiveComponents';
-
-export const metadata = {
-  demo: THREEVectorAndColor,
-  title: 'THREE.Vector & THREE.Color'
-};
+---
+title: "THREE.Vector & THREE.Color"
+demo: threejs-vector-and-color
+---
 
 ThreeJS uses a data types for "coordinates" called `THREE.Vector`:
 

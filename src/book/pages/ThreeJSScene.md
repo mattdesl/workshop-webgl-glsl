@@ -1,9 +1,7 @@
-import { Scene } from './InteractiveComponents';
-
-export const metadata = {
-  demo: Scene,
-  title: 'THREE.Scene'
-};
+---
+title: "THREE.Scene"
+demo: scene
+---
 
 The core of any ThreeJS application is its scenegraph, [THREE.Scene](https://threejs.org/docs/#api/en/scenes/Scene).
 

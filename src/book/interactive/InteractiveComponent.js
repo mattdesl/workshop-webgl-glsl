@@ -1,20 +1,23 @@
 /** @jsx h */
-const { h, Component } = require("preact");
-const CodeEditor = require("./CodeEditor");
-const defined = require("defined");
-const canvasSketch = require("canvas-sketch");
-const screenfull = require("screenfull");
-const Params = require("./Params");
-const cloneDeep = require("lodash.clonedeep");
-const merge = require("lodash.merge");
-const UI = require("../util/UI");
-const fastDeepEqual = require("fast-deep-equal");
-const resetSVG = require("../assets/image/baseline-refresh-24px.svg");
-const enterFullcreenSVG = require("../assets/image/baseline-fullscreen-24px.svg");
-const exitFullcreenSVG = require("../assets/image/baseline-fullscreen_exit-24px.svg");
-const noop = () => {};
+import { h, Component } from 'preact';
+import CodeEditor from './CodeEditor';
+import defined from 'defined';
+import canvasSketch from 'canvas-sketch';
+import screenfull from 'screenfull';
+import Params from './Params';
+import cloneDeep from 'lodash.clonedeep';
+import merge from 'lodash.merge';
+import UI from '../util/UI';
+import fastDeepEqual from 'fast-deep-equal';
+import resetSVG from '../assets/image/baseline-refresh-24px.svg';
+import enterFullcreenSVG from '../assets/image/baseline-fullscreen-24px.svg';
+import exitFullcreenSVG from '../assets/image/baseline-fullscreen_exit-24px.svg';
 
-require("./InteractiveComponent.scss");
+const noop = () => {};
+const mountedInteractiveComponents = new Set();
+let activeInteractiveComponent = null;
+
+import './InteractiveComponent.scss';
 
 class Canvas extends Component {
   constructor(props) {
@@ -32,7 +35,7 @@ class Canvas extends Component {
     this._disposed = false;
 
     try {
-      this.manager = await canvasSketch(this.props.sketch, {
+      const manager = await canvasSketch(this.props.sketch, {
         ...this.props.settings,
         hotkeys: false,
         data: {
@@ -44,7 +47,32 @@ class Canvas extends Component {
         canvas: this.canvas,
         parent: this.canvasContainer
       });
+      if (this._disposed) {
+        manager.stop();
+        manager.unload();
+        this._releaseContext();
+        return;
+      }
+      this.manager = manager;
+      if (typeof ResizeObserver !== "undefined") {
+        this._resizeObserver = new ResizeObserver(entries => {
+          const entry = entries[entries.length - 1];
+          const { width, height } = entry.contentRect;
+          if (width > 0 && height > 0 && this.manager) {
+            // canvas-sketch updates its backing store on resize, but static
+            // sketches also need a draw call after that store is cleared.
+            if (this.manager.resize()) this.manager.render();
+          }
+        });
+        this._resizeObserver.observe(this.canvasContainer);
+      } else {
+        this._handleWindowResize = () => {
+          if (this.manager && this.manager.resize()) this.manager.render();
+        };
+        window.addEventListener("resize", this._handleWindowResize);
+      }
       await document.fonts.ready;
+      if (this._disposed || !this.manager) return;
       this.handleParamsChange(this.props);
       this.handleCodeChange(this.props);
       this.manager.update(); // re-render after fonts are ready
@@ -53,6 +81,8 @@ class Canvas extends Component {
       }
       this._onRuntimeSuccess();
     } catch (err) {
+      if (this._disposed) return;
+      if (!this.manager) this._releaseContext();
       this._onRuntimeError(err);
     }
   }
@@ -61,15 +91,40 @@ class Canvas extends Component {
     this.unload();
   }
 
+  resize() {
+    if (this.manager) {
+      this.manager.resize();
+      this.manager.render();
+    }
+  }
+
   unload() {
+    if (this._resizeObserver) {
+      this._resizeObserver.disconnect();
+      this._resizeObserver = null;
+    }
+    if (this._handleWindowResize) {
+      window.removeEventListener("resize", this._handleWindowResize);
+      this._handleWindowResize = null;
+    }
     if (!this._disposed) {
       this._disposed = true;
-      if (this.manager) {
+      const hasManager = Boolean(this.manager);
+      if (hasManager) {
         this.manager.stop();
         this.manager.unload();
         this.manager = null;
       }
+      // getContext() creates a context on a fresh canvas, so only release it
+      // after canvasSketch has successfully created a manager for this canvas.
+      if (hasManager) this._releaseContext();
     }
+  }
+
+  _releaseContext() {
+    const gl = this.canvas && this.canvas.getContext("webgl2");
+    const extension = gl && gl.getExtension("WEBGL_lose_context");
+    if (extension) extension.loseContext();
   }
 
   reset() {
@@ -219,27 +274,114 @@ class InteractiveComponent extends Component {
     const params = this.props.params || {};
     this.initialProps = cloneDeep(this.props);
     this.initialParams = this.initialProps.params || {};
+    this._paramsRevision = 0;
 
     const evalState = this.getNewEvaluatedState(this.props.code, params);
     this.state = {
       params,
+      paramsRevision: 0,
+      isFullscreenFallback: false,
       ...evalState
     };
 
     this._handleFullscreenChange = () => {
       this.forceUpdate();
+      this._refreshCanvasSize();
+    };
+    this._handleWindowKeyDown = ev => {
+      if (ev.key === "Escape" && this.state.isFullscreenFallback) {
+        ev.preventDefault();
+        this.setState({ isFullscreenFallback: false }, this._refreshCanvasSize);
+        return;
+      }
+
+      if (
+        ev.key.toLowerCase() === "x" &&
+        ev.altKey &&
+        !ev.ctrlKey &&
+        !ev.metaKey &&
+        !ev.shiftKey &&
+        !ev.repeat
+      ) {
+        const target = ev.target;
+        const eventIsInsideThisComponent =
+          this.container && this.container.contains(target);
+        if (
+          activeInteractiveComponent !== this &&
+          !eventIsInsideThisComponent
+        ) return;
+
+        ev.preventDefault();
+        this.resetState();
+        return;
+      }
+
+      if (
+        ev.code !== "Space" ||
+        ev.repeat ||
+        ev.altKey ||
+        ev.ctrlKey ||
+        ev.metaKey
+      ) return;
+
+      const target = ev.target;
+      const isInteractiveTarget = Boolean(
+        target &&
+          typeof target.closest === "function" &&
+          target.closest(
+            'button, a[href], input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], .cm-editor'
+          )
+      );
+      const eventIsInsideThisComponent = this.container && this.container.contains(target);
+      if (
+        isInteractiveTarget ||
+        (activeInteractiveComponent !== this && !eventIsInsideThisComponent)
+      ) return;
+
+      ev.preventDefault();
+      this.toggleFullscreen();
+    };
+    this._handlePointerEnter = () => {
+      activeInteractiveComponent = this;
+    };
+    this._refreshCanvasSize = () => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (this.canvas) this.canvas.resize();
+        });
+      });
     };
   }
 
   componentDidMount() {
     // console.log('mount', this.initialParams, this.props.params)
-    screenfull.on("change", this._handleFullscreenChange);
+    mountedInteractiveComponents.add(this);
+    if (!activeInteractiveComponent) activeInteractiveComponent = this;
+    if (this.container) {
+      this.container.addEventListener("pointerenter", this._handlePointerEnter);
+    }
+    if (screenfull.isEnabled) {
+      screenfull.on("change", this._handleFullscreenChange);
+    }
+    window.addEventListener("keydown", this._handleWindowKeyDown);
   }
 
   async toggleFullscreen() {
-    if (screenfull.enabled) {
-      await screenfull.toggle(this.container);
+    if (this.state.isFullscreenFallback) {
+      this.setState({ isFullscreenFallback: false }, this._refreshCanvasSize);
+      return;
     }
+    if (screenfull.isEnabled) {
+      try {
+        await screenfull.toggle(this.container);
+        this._refreshCanvasSize();
+        return;
+      } catch (error) {
+        // Some browsers expose the fullscreen API but reject it for embedded
+        // or otherwise restricted documents; use the viewport overlay below.
+      }
+    }
+    this.setState({ isFullscreenFallback: true }, this._refreshCanvasSize);
   }
 
   resetState() {
@@ -260,17 +402,35 @@ class InteractiveComponent extends Component {
       if (this.editor) this.editor.unload();
       if (this.canvas) this.canvas.unload();
     });
-    screenfull.off("change", this._handleFullscreenChange);
+    if (screenfull.isEnabled) {
+      screenfull.off("change", this._handleFullscreenChange);
+    }
+    window.removeEventListener("keydown", this._handleWindowKeyDown);
+    if (this.container) {
+      this.container.removeEventListener("pointerenter", this._handlePointerEnter);
+    }
+    mountedInteractiveComponents.delete(this);
+    if (activeInteractiveComponent === this) {
+      activeInteractiveComponent = mountedInteractiveComponents.values().next().value || null;
+    }
   }
 
   handleParamsChange(params, code = this.state.code, cb = noop) {
     // Mutate object rather than createa copy,
     // as it holds the UI metadata
     const newParams = Object.assign(this.state.params, params);
-    const newCodeState = this.getNewEvaluatedState(code, newParams);
+    const newCodeState =
+      this.props.evaluateOnParamsChange === false && code === this.state.code
+        ? {
+            code,
+            evaluateResult: this.state.evaluateResult,
+            evaluateError: this.state.evaluateError
+          }
+        : this.getNewEvaluatedState(code, newParams);
     const newState = {
       ...newCodeState,
-      params: newParams
+      params: newParams,
+      paramsRevision: ++this._paramsRevision
     };
     if (this.canvas) {
       this.canvas.handleParamsChange({
@@ -331,6 +491,7 @@ class InteractiveComponent extends Component {
           evaluateError={this.state.evaluateError}
           evaluateResult={this.state.evaluateResult}
           params={this.state.params}
+          paramsRevision={this.state.paramsRevision}
         />
       ),
       showParams && (
@@ -344,7 +505,13 @@ class InteractiveComponent extends Component {
       )
     ].filter(Boolean);
     let size = defined(this.props.size, "medium");
-    const classname = ["InteractiveComponent", size].join(" ");
+    const classname = [
+      "InteractiveComponent",
+      size,
+      this.state.isFullscreenFallback ? "is-fullscreen-fallback" : ""
+    ].filter(Boolean).join(" ");
+    const isFullscreen = this.state.isFullscreenFallback ||
+      (screenfull.isFullscreen && screenfull.element === this.container);
     const dynamicParams = Object.keys(this.state.params)
       .map(key => {
         const control = UI.getControlData(this.state.params, key);
@@ -384,22 +551,29 @@ class InteractiveComponent extends Component {
           </div>
         )}
         <div class="InteractiveComponentToolbar">
-          <div
+          <button
+            type="button"
             class="InteractiveComponentToolbarButton"
             onClick={() => this.resetState()}
+            aria-label="Reset example (Alt+X)"
+            title="Reset example (Alt+X)"
           >
-            <img src={resetSVG} />
-          </div>
-          <div
+            <img src={resetSVG} alt="" />
+          </button>
+          <button
+            type="button"
             class="InteractiveComponentToolbarButton"
             onClick={() => this.toggleFullscreen()}
+            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
           >
             <img
+              alt=""
               src={
-                screenfull.isFullscreen ? exitFullcreenSVG : enterFullcreenSVG
+                isFullscreen ? exitFullcreenSVG : enterFullcreenSVG
               }
             />
-          </div>
+          </button>
         </div>
       </div>
     );
@@ -410,10 +584,7 @@ InteractiveComponent.defaultProps = {
   showCanvas: true,
   showParams: false,
   showCode: false,
-  evaluate: code => {
-    /* eslint no-eval: 0 */
-    return window.eval(code);
-  },
+  evaluate: code => code,
   sketch: () => {
     return ({ context, width, height }) => {
       // console.log(width, height);
@@ -427,4 +598,4 @@ InteractiveComponent.defaultProps = {
   settings: {}
 };
 
-module.exports = InteractiveComponent;
+export default InteractiveComponent;

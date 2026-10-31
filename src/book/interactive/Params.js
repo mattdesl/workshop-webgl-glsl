@@ -1,19 +1,20 @@
 /** @jsx h */
-const { h, Component } = require("preact");
-const UI = require("../util/UI");
-const { lerp } = require("canvas-sketch-util/math");
-const titleCase = require("title-case");
-const numberEditor = require("number-editor");
-const Color = require("canvas-sketch-util/color");
-const debounce = require("lodash.debounce");
-require("./Params.scss");
-require("./material-checkbox.css");
-require("./material-slider.css");
+import * as THREE from 'three';
+import { h, Component } from 'preact';
+import UI from '../util/UI';
+import { lerp } from 'canvas-sketch-util/math';
+import { titleCase } from 'title-case';
+import numberEditor from 'number-editor';
+import Color from 'canvas-sketch-util/color';
+import debounce from 'lodash.debounce';
+import './material-checkbox.css';
+import './material-slider.css';
+import './Params.scss';
 
 const evaluateControl = (control, state) => {
   return Object.keys(control).reduce((dict, key) => {
     if (typeof control[key] === "function") {
-      dict[key] = control[key](state, key, control);
+      dict[key] = control[key].call(state, state, key, control);
     } else {
       dict[key] = control[key];
     }
@@ -37,17 +38,18 @@ function roundToDecimals(value, decimals) {
 }
 
 const ComponentContainer = props => {
+  const { left, wide, children, ...containerProps } = props;
   return (
     <div
-      {...props}
-      class={`ComponentContainer ${props.left ? "left" : "right"}`}
+      {...containerProps}
+      class={`ComponentContainer ${left ? "left" : "right"} ${wide ? "wide" : ""}`}
     >
-      {props.children}
+      {children}
     </div>
   );
 };
 
-class Spinner extends Component {
+export class Spinner extends Component {
   constructor(props) {
     super(props);
     this._handleChange = value => {
@@ -56,7 +58,9 @@ class Spinner extends Component {
   }
 
   componentWillUnmount() {
-    this.editor.dispose();
+    if (this.editor && typeof this.editor.dispose === 'function') {
+      this.editor.dispose();
+    }
   }
 
   componentDidMount() {
@@ -65,8 +69,8 @@ class Spinner extends Component {
       max = Infinity,
       step = 0.01,
       value,
-      onChange
     } = this.props;
+    
     this.editor = numberEditor({
       value,
       min,
@@ -74,9 +78,13 @@ class Spinner extends Component {
       step,
       decimals: getPrecision(step)
     });
-    this.container.appendChild(this.editor.element);
+    
+    if (this.container) {
+      this.container.appendChild(this.editor.element);
+    }
     this.editor.on("change", this._handleChange);
   }
+
   render() {
     return (
       <ComponentContainer>
@@ -96,7 +104,7 @@ const quickParseColor = (color, defaultValue = "#000000") => {
   return parsed ? parsed.hex : defaultValue;
 };
 
-const ColorPicker = props => {
+export const ColorPicker = props => {
   const { value, enabled = true, readOnly = false, onChange } = props;
   const parsedValue = quickParseColor(value);
 
@@ -117,7 +125,7 @@ const ColorPicker = props => {
         value={parsedValue}
         disabled={!enabled}
         readOnly={readOnly}
-        onChange={debounce(ev => {
+        onInput={debounce(ev => {
           let parsed = Color.parse(ev.target.value);
           if (!parsed) parsed = Color.parse(`#${ev.target.value}`);
           if (parsed) onChange(parsed.hex);
@@ -127,22 +135,15 @@ const ColorPicker = props => {
   );
 };
 
-const Select = props => {
+export const Select = props => {
   const { enabled = true, readOnly = false, onChange } = props;
   let options = props.options || [];
-  let map;
   let value = props.value;
 
   if (options && !Array.isArray(options) && typeof options === "object") {
     throw new Error("not yet supported");
-    // map = options;
-    // options = Object.keys(options).map(key => {
-    //   return { key, value: options[key] };
-    // });
-    // if (!(value in map)) {
-    //   console.warn(`The key ${value} doesn't exist in the options object`);
-    // }
   }
+  
   return (
     <ComponentContainer>
       <select
@@ -153,17 +154,16 @@ const Select = props => {
           onChange(ev.target.value);
         }}
       >
-        {options.map(option => {
+        {options.map((option, idx) => {
           if (typeof option === "string") {
-            return <option value={option}>{option}</option>;
+            return <option key={idx} value={option}>{option}</option>;
           } else if (option && typeof option === "object") {
             const label = option.label || option.key;
-            return <option value={option.key}>{label}</option>;
+            return <option key={idx} value={option.key}>{label}</option>;
           } else {
             throw new Error("Invalid or null option in Select UI");
           }
         })}
-        ;
       </select>
     </ComponentContainer>
   );
@@ -180,20 +180,27 @@ const fastParseNumber = (value, min, max) => {
   return defaultValue;
 };
 
-const Slider = props => {
+export const Slider = props => {
   const {
     min = -Infinity,
     max = Infinity,
     step,
+    decimals,
     value,
     enabled = true,
     readOnly = false,
     onChange
   } = props;
+  
   const parsedNumber = fastParseNumber(value, min, max);
-  const decimalPlaces = isFinite(step) ? getPrecision(step) : 0;
+  const decimalPlaces = Number.isFinite(decimals)
+    ? Math.max(0, decimals)
+    : isFinite(step)
+      ? getPrecision(step)
+      : 0;
+  
   return (
-    <ComponentContainer>
+    <ComponentContainer wide>
       <div class="MaterialSlider">
         <input
           type="range"
@@ -204,9 +211,6 @@ const Slider = props => {
           disabled={!enabled}
           readOnly={readOnly}
           onInput={ev => {
-            onChange(fastParseNumber(ev.target.value, min, max));
-          }}
-          onChange={ev => {
             onChange(fastParseNumber(ev.target.value, min, max));
           }}
         />
@@ -220,7 +224,7 @@ const Slider = props => {
         step={step}
         disabled={!enabled}
         readOnly={readOnly}
-        onChange={debounce(ev => {
+        onInput={debounce(ev => {
           const newNum = parseFloat(ev.target.value);
           if (isFinite(newNum)) {
             onChange(newNum);
@@ -231,11 +235,14 @@ const Slider = props => {
   );
 };
 
-const Checkbox = props => {
+export const Checkbox = props => {
   const { value, enabled = true, readOnly = false, onChange } = props;
+  const checkboxClass = props.hideCheckmark
+    ? "MaterialCheckbox no-checkmark"
+    : "MaterialCheckbox";
   return (
     <ComponentContainer left>
-      <label class="MaterialCheckbox">
+      <label class={checkboxClass}>
         <input
           type="checkbox"
           checked={Boolean(value)}
@@ -251,7 +258,7 @@ const Checkbox = props => {
   );
 };
 
-const controlMap = {
+export const controlMap = {
   slider: Slider,
   color: ColorPicker,
   checkbox: Checkbox,
@@ -259,7 +266,7 @@ const controlMap = {
   select: Select
 };
 
-const ParamsComponent = props => {
+export const ParamsComponent = props => {
   const { enabled = true } = props;
   const labelClasses = [
     "ParamsComponentLabel",
@@ -267,8 +274,9 @@ const ParamsComponent = props => {
   ]
     .filter(Boolean)
     .join(" ");
+    
   return (
-    <div class="ParamsComponent" disabled={!enabled}>
+    <div class={`ParamsComponent ${props.type === "slider" ? "slider" : ""} ${props.label === "Perspective" ? "full-width-label" : ""}`} disabled={!enabled}>
       {props.type !== "checkbox" ? (
         <label class={labelClasses} disabled={!enabled}>
           {props.label}
@@ -279,7 +287,7 @@ const ParamsComponent = props => {
   );
 };
 
-class Params extends Component {
+export default class Params extends Component {
   constructor(props) {
     super(props);
     this.state = {};
@@ -288,9 +296,15 @@ class Params extends Component {
     }
   }
 
-  componentWillReceiveProps(nextProps) {
-    if (nextProps.params !== this.props.params) {
-      this.paramsChanged(nextProps.params, this.props.params);
+  componentDidUpdate(prevProps) {
+    if (this.props.params !== prevProps.params) {
+      this.paramsChanged(this.props.params, prevProps.params);
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.props.params) {
+      UI.unregister(this.props.params);
     }
   }
 
@@ -305,48 +319,65 @@ class Params extends Component {
 
   render() {
     const { params, onChange } = this.props;
+    if (!params) return null;
+
+    const defaultChangeHandler = this.props.onChange || (() => {});
 
     const controls = Object.keys(params)
       .map(key => {
         if (!UI.hasControlData(params, key)) return null;
         const control = UI.getControlData(params, key);
-        if (!control || control.visible === false) return null;
+        if (!control) return null;
+
         const evaluatedControl = evaluateControl(control, params);
+        if (evaluatedControl.visible === false) return null;
         const defaultLabel = evaluatedControl.variable ? key : titleCase(key);
         const label = evaluatedControl.label || defaultLabel;
+        
         if (evaluatedControl.type in controlMap) {
           const Component = controlMap[evaluatedControl.type];
           const onControlChange = value => {
-            onChange({
-              ...params,
-              [key]: value
+            const nextParams = Object.assign(
+              Object.create(Object.getPrototypeOf(params)), 
+              params, 
+              { [key]: value }
+            );
+            
+            // Re-bind decorators if modern instances are passed down
+            Object.getOwnPropertyNames(params).forEach(propKey => {
+              if (UI.hasControlData(params, propKey)) {
+                UI.setControlData(nextParams, propKey, UI.getControlData(params, propKey));
+              }
             });
+
+            if (onChange) {
+              onChange(nextParams);
+            } else {
+              defaultChangeHandler(nextParams);
+            }
           };
-          // if (evaluatedControl.type === 'checkbox') {
-          //   return <Component {...evaluatedControl} value={params[key]} key={key} onChange={onControlChange} />;
-          // }
+
           return (
-            <ParamsComponent {...evaluatedControl} label={label}>
+            <ParamsComponent 
+              key={key} 
+              {...evaluatedControl} 
+              label={label}
+            >
               <Component
                 {...evaluatedControl}
                 label={label}
                 value={params[key]}
-                key={key}
                 onChange={onControlChange}
               />
             </ParamsComponent>
           );
         } else {
           console.warn(`Type ${evaluatedControl.type} not recognized`);
+          return null;
         }
       })
       .filter(Boolean);
+
     return <div class="InteractiveComponentParams">{controls}</div>;
   }
 }
-
-Params.defaultProps = {
-  onChange: () => {}
-};
-
-module.exports = Params;

@@ -1,9 +1,7 @@
-import ThreeGeomMat from '../interactive/ThreeGeomMat';
-
-export const metadata = {
-  demo: () => <ThreeGeomMat material />,
-  title: 'THREE.Material'
-};
+---
+title: "THREE.Material"
+demo: threejs-material
+---
 
 ThreeJS uses a [THREE.Material](https://threejs.org/docs/#api/en/materials/Material) class to hold surface properties such as color, metalness, etc.
 

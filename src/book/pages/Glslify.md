@@ -1,82 +1,71 @@
-export const metadata = {
-  title: 'glslify'
-};
+---
+title: "glslify"
+---
 
-# `glslify`
+[glslify](https://github.com/glslify/glslify) preprocesses GLSL so shader
+files can import reusable functions from npm packages or local files.
 
-Built into `canvas-sketch` is a tool called [glslify](https://www.npmjs.com/package/glslify) that can enable importing GLSL snippets from npm.
+This project uses `vite-plugin-glsl` for shader imports. Its `#include`
+syntax is separate from glslify's `#pragma glslify` syntax; glslify needs
+its own build step or transform.
 
-To use it, you have to replace your template strings with `glslify(shaderStr)` function calls like so:
+## GLSL ES 3.00 source
+
+For a standalone WebGL 2 shader, put `#version 300 es` on the first line.
+When Three.js sets `glslVersion: THREE.GLSL3` on a material, it adds that
+directive for you, so omit it from the shader string.
+
+Install glslify and a shader module in a project configured to run glslify:
+
+```sh
+npm install --save-dev glslify glsl-noise
+```
+
+Import and preprocess the fragment shader at build time:
 
 ```js
-// Require glslify at the top of your file
-const glslify = require('glslify');
+import glslify from 'glslify';
 
-// Wrap template strings with the function
-const vertexShader = glslify(`
-  void main () {
-    // ... usual shader code
+const fragmentShader = glslify(`
+  precision highp float;
+
+  #pragma glslify: noise = require(glsl-noise/simplex/2d)
+
+  in vec2 vUv;
+  out vec4 fragColor;
+
+  void main() {
+    float value = noise(vUv);
+    fragColor = vec4(vec3(value * 0.5 + 0.5), 1.0);
   }
 `);
 ```
 
-Now, you can `npm install` a GLSL module such as:
+This uses GLSL ES 3.00 inputs and an explicit fragment output. Configure
+glslify in the build pipeline before passing the result to WebGL.
 
-- [glsl-noise](https://www.npmjs.com/package/glsl-noise)
-- [glsl-random](https://www.npmjs.com/package/glsl-random)
-- [glsl-dither](https://www.npmjs.com/package/glsl-dither)
+## Write a module
 
-You use the `#pragma` syntax to import modules, like so:
-
-```glsl
-#pragma glslify: noise = require('glsl-noise/simplex/3d');
-#pragma glslify: random = require('glsl-random');
-#pragma glslify: myUtil = require('./path/to/my-function.glsl');
-```
-
-Here's how it looks in a shader:
-
-```js
-// Wrap template strings with the function
-const vertexShader = glslify(`
-  #pragma glslify: noise = require('glsl-noise/simplex/3d');
-
-  void main () {
-    float n = noise(position.xyz);
-    // do something with n...
-  }
-`);
-```
-
-You can also move your shader to a new file, like `.glsl`, `.vert` or `.frag`, and require it like so in JavaScript:
-
-```js
-// glslify still works here
-const myShader = require('./someShader.glsl');
-```
-
-## Modules
-
-You can make your own modules like so. First create the module and export a single function from it:
-
-`red.glsl`
+A GLSL module exports a function. It does not include a version directive or
+default precision; the entry shader owns those declarations.
 
 ```glsl
-vec3 red () {
+vec3 red() {
   return vec3(1.0, 0.0, 0.0);
 }
 
-#pragma glslify: export(red);
+#pragma glslify: export(red)
 ```
 
-Now you can import the file from another shader:
-
-`main.glsl`
+Import the function in an entry shader:
 
 ```glsl
-#pragma glslify: red = require('./red.glsl');
+#pragma glslify: red = require('./red.glsl')
 
-void main () {
-  vec3 r = red(); // should be (1,0,0)
+precision highp float;
+out vec4 fragColor;
+
+void main() {
+  fragColor = vec4(red(), 1.0);
 }
 ```

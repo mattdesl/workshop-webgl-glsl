@@ -1,9 +1,7 @@
-import { Indices } from './InteractiveComponents.js';
-
-export const metadata = {
-  title: 'Indices',
-  demo: Indices
-};
+---
+title: "Indices"
+demo: indices
+---
 
 In graphics programming, *indices* usually refers to an array that holds the index values into a `vertices` array.
 

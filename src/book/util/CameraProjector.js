@@ -1,16 +1,28 @@
-const { mat4 } = require('gl-matrix');
-const cameraProject = require('camera-project');
-const cameraUnproject = require('camera-unproject');
+import * as THREE from "three";
+import { mat4 } from "gl-matrix";
+import cameraProject from "camera-project";
+import cameraUnproject from "camera-unproject";
 
-module.exports = function (camera) {
+// Modern ES Default Export replacing module.exports
+export default function CameraProjector(camera) {
   const modelView = [];
   const projView = [];
   const invProjView = [];
-  const viewport = [ 0, 0, 1, 1 ];
+  const viewport = [0, 0, 1, 1];
   const container = new THREE.Group();
 
+  function project(point, output = []) {
+    const vec = [point[0], point[1], point[2] || 0];
+    return cameraProject(output, vec, viewport, projView);
+  }
+
+  function unproject(point, output = []) {
+    const vec = [point[0], point[1], point[2] || 0];
+    return cameraUnproject(output, vec, viewport, invProjView);
+  }
+
   return {
-    update ({ width, height }) {
+    update({ width, height }) {
       camera.updateMatrix();
       camera.updateMatrixWorld(true);
 
@@ -25,16 +37,6 @@ module.exports = function (camera) {
       mat4.invert(invProjView, projView);
     },
     project,
-    unproject
+    unproject,
   };
-
-  function project (point, output = []) {
-    const vec = [ point[0], point[1], point[2] || 0 ];
-    return cameraProject(output, vec, viewport, projView);
-  }
-
-  function unproject (point, output = []) {
-    const vec = [ point[0], point[1], point[2] || 0 ];
-    return cameraUnproject(output, vec, viewport, invProjView);
-  }
-};
+}

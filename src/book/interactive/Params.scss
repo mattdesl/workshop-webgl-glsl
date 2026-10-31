@@ -1,96 +1,385 @@
-.ParamsComponent {
-  &[disabled], &:disabled {
-    opacity: 0.5;
-  }
-  margin-bottom: 10px;
-  &:last-child {
-    margin-bottom: 0;
-  }
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  // padding: 10px;
+.InteractiveComponentParams {
+  --pure-material-primary-rgb: var(--param-primary-rgb);
+  --pure-material-onprimary-rgb: var(--param-onprimary-rgb);
+  --pure-material-onsurface-rgb: var(--param-onsurface-rgb);
+  --pure-material-surface-rgb: var(--param-surface-rgb);
+  --pure-material-safari-helper1: rgba(var(--param-primary-rgb), 0.04);
+  --pure-material-safari-helper2: rgba(var(--param-primary-rgb), 0.12);
+  --pure-material-safari-helper3: rgba(var(--param-primary-rgb), 0.16);
+  --pure-material-safari-helper4: rgba(var(--param-primary-rgb), 0.24);
+}
 
-  padding-left: 10px;
-  padding-right: 10px;
+.ParamsComponent {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 46px;
+  padding: 4px 2px;
+  margin: 0;
+  border-bottom: 1px solid var(--line);
+  transition: border-color 260ms var(--ease-out), background-color 420ms var(--ease-out), transform 240ms var(--ease-out);
+
+  &:hover:not([disabled]) {
+    background: var(--hover-fill);
+    transform: translateX(2px);
+  }
+
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  &[disabled],
+  &:disabled {
+    opacity: 0.42;
+  }
 }
+
 .ParamsComponentLabel {
-  margin-right: 20px;
-  white-space: nowrap;
-  flex-grow: 1;
-  font-size: 14px;
-}
-.App.large .ParamsComponentLabel {
-  font-size: 18px;
+  min-width: 0;
+  margin-right: 12px;
+  flex: 1 1 auto;
+  color: var(--muted);
+  font-size: 0.78em;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  transition: color 420ms var(--ease-out), font-size 280ms var(--ease-out);
 }
 
 .ParamsComponentLabel.variable {
+  color: var(--ink);
   font-family: 'Hack', 'Courier New', monospace;
-  color: #e87633;
-  font-weight: 700;
+  font-weight: 600;
+}
+
+.ParamsComponent.slider.full-width-label {
+  align-items: stretch;
+  flex-wrap: wrap;
+  padding-top: 8px;
+  padding-bottom: 6px;
+}
+
+.ParamsComponent.slider.full-width-label .ParamsComponentLabel {
+  flex: 0 0 100%;
+  margin: 0 0 2px;
+  white-space: nowrap;
+}
+
+.ParamsComponent.slider.full-width-label .ComponentContainer.wide {
+  width: 100%;
+  height: 44px;
+  flex: 0 0 100%;
 }
 
 .ComponentContainer {
-  width: 100%;
-  min-width: 250px;
   display: flex;
-  justify-content: flex-end;
   align-items: center;
-  flex-shrink: 1;
-  height: 36px;
+  justify-content: flex-end;
+  width: 54%;
+  min-width: 0;
+  height: 42px;
+  flex: 0 1 54%;
+
   &.left {
     justify-content: flex-start;
   }
 }
-.ComponentInput {
-  outline: none;
-  font-family: 'Hack', 'Courier New', monospace;
-  font-size: 12px;
-  min-width: 70px;
-  width: 70px;
-  border: 1px solid #dcdcdc;
-  &:hover, &:focus {
-    border: 1px solid #ababab;
-  }
-  text-align: right;
-  border-radius: 5px;
-  padding: 5px 10px;
-  margin-left: 20px;
-}
-.App.large .ComponentInput {
-  font-size: 16px;
-}
-input[type=number].ComponentInput::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-}
-input[type=number].ComponentInput {
-  -moz-appearance:textfield;
+
+.ComponentContainer.wide {
+  width: 78%;
+  flex-basis: 78%;
 }
 
-input[type="color"] {
-  cursor: pointer;
-  -webkit-appearance: none;
-  border: none;
-  background: none;
-  border-radius: 5px;
-  padding: 0;
-  overflow: hidden;
-  width: 50px;
-  height: 25px;
-  outline: 0;
-  box-sizing: border-box;
-  border: 1px solid #dcdcdc;
-  &:hover, &:focus, &:active {
-    border: 1px solid #ababab;
+@media (min-width: 761px) {
+  .App[data-reading-scale='large'] .InteractiveComponentParams .ComponentContainer {
+    width: 64%;
+    flex-basis: 64%;
   }
-  
+
+  .App[data-reading-scale='large'] .InteractiveComponentParams .ComponentContainer.wide {
+    width: 100%;
+    flex-basis: 100%;
+  }
+
 }
-input[type="color"]::-webkit-color-swatch-wrapper {
-  border: 0;
+
+.ComponentContainer.wide > .MaterialSlider {
+  width: auto;
+  min-width: 0;
+  flex: 1 1 0;
+}
+
+.ComponentInput,
+.InteractiveComponentParams input[type='text'],
+.InteractiveComponentParams input[type='number'] {
+  box-sizing: border-box;
+  width: 76px;
+  min-width: 64px;
+  min-height: 40px;
+  padding: 7px 9px;
+  margin-left: 10px;
+  border: 1px solid var(--input-line);
+  border-radius: 0;
+  outline: none;
+  background: var(--input-bg);
+  color: var(--input-text);
+  font-family: 'Hack', 'Courier New', monospace;
+  font-size: 0.72em;
+  text-align: right;
+  transition: border-color 200ms var(--ease-out), background-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+}
+
+.ComponentInput:hover,
+.InteractiveComponentParams input[type='text']:hover,
+.InteractiveComponentParams input[type='number']:hover {
+  border-color: var(--line-strong);
+}
+
+.ComponentInput:focus,
+.InteractiveComponentParams input[type='text']:focus,
+.InteractiveComponentParams input[type='number']:focus,
+.ComponentContainer > select:focus {
+  border-color: var(--white);
+  background: var(--white);
+  color: var(--page);
+  box-shadow: 0 0 0 1px var(--white);
+}
+
+input[type='number'].ComponentInput::-webkit-inner-spin-button,
+.InteractiveComponentParams input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+input[type='number'].ComponentInput,
+.InteractiveComponentParams input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+.InteractiveComponentParams input[type='color'] {
+  box-sizing: border-box;
+  width: 48px;
+  height: 36px;
+  padding: 3px;
+  border: 1px solid var(--input-line);
+  border-radius: 0;
+  outline: 0;
+  background: var(--input-bg);
+  cursor: pointer;
+  transition: border-color 200ms var(--ease-out), transform 200ms var(--ease-spring);
+  -webkit-appearance: none;
+}
+
+.InteractiveComponentParams input[type='color']:hover,
+.InteractiveComponentParams input[type='color']:focus-visible {
+  border-color: var(--white);
+}
+
+.InteractiveComponentParams input[type='color']:active {
+  transform: scale(0.96);
+}
+
+input[type='color']::-webkit-color-swatch-wrapper {
   padding: 0;
+  border: 0;
 }
-input[type="color"]::-webkit-color-swatch {
-  border: none;
-  border: 2px solid white;
-  border-radius: 5px;
+
+input[type='color']::-webkit-color-swatch {
+  border: 0;
+  border-radius: 0;
+}
+
+.ComponentContainer > select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 6px 28px 6px 9px;
+  border: 1px solid var(--input-line);
+  border-radius: 0;
+  outline: none;
+  background: var(--input-bg);
+  color: var(--input-text);
+  font-size: 0.75em;
+  transition: border-color 200ms var(--ease-out), background-color 200ms var(--ease-out), color 200ms var(--ease-out);
+}
+
+.ComponentContainer > select:hover {
+  border-color: var(--line-strong);
+}
+
+.MaterialSlider {
+  width: 100%;
+  color: var(--ink);
+  transition: color 420ms var(--ease-out);
+}
+
+.MaterialSlider > input {
+  height: 44px;
+  touch-action: pan-y;
+}
+
+.MaterialSlider > input::-webkit-slider-runnable-track {
+  height: 1px;
+  background: var(--line-strong);
+}
+
+.MaterialSlider > input::-moz-range-track {
+  height: 1px;
+  background: var(--line-strong);
+}
+
+.MaterialSlider > input::-webkit-slider-thumb {
+  width: 3px;
+  height: 3px;
+  border: 0;
+  border-radius: 0;
+  background: var(--white);
+  box-shadow: 0 0 0 4px var(--hover-fill);
+  transition: box-shadow 200ms var(--ease-out), transform 200ms var(--ease-spring);
+}
+
+.MaterialSlider > input::-moz-range-thumb {
+  width: 3px;
+  height: 3px;
+  border: 0;
+  border-radius: 0;
+  background: var(--white);
+  box-shadow: 0 0 0 4px var(--hover-fill);
+  transition: box-shadow 200ms var(--ease-out), transform 200ms var(--ease-spring);
+}
+
+@container (max-width: 390px) {
+  .ParamsComponent.slider {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0;
+    padding: 5px 2px 3px;
+  }
+
+  .ParamsComponent.slider .ParamsComponentLabel {
+    margin: 0 0 1px;
+    flex: 0 0 auto;
+    font-size: 0.72em;
+  }
+
+  .ParamsComponent.slider .ComponentContainer.wide {
+    width: 100%;
+    height: 48px;
+    flex: 0 0 48px;
+  }
+
+  .ParamsComponent.slider .MaterialSlider {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .ParamsComponent.slider .ComponentInput {
+    width: 68px;
+    min-width: 58px;
+    margin-left: 8px;
+  }
+
+  .ParamsComponent.slider.full-width-label .ParamsComponentLabel {
+    flex: 0 0 auto;
+  }
+
+  .ParamsComponent.slider.full-width-label .ComponentContainer.wide {
+    height: 48px;
+    flex: 0 0 48px;
+  }
+}
+
+.MaterialCheckbox {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--ink);
+  font-size: 0.75em;
+}
+
+.MaterialCheckbox > span {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: inherit;
+}
+
+.MaterialCheckbox > span::before {
+  flex: 0 0 18px;
+  border-color: var(--muted);
+  border-radius: 0;
+  transition: border-color 200ms var(--ease-out), background-color 200ms var(--ease-out), transform 200ms var(--ease-spring);
+}
+
+.MaterialCheckbox > input {
+  transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-spring);
+}
+
+.MaterialCheckbox:hover > span::before,
+.MaterialCheckbox > input:focus-visible + span::before {
+  border-color: var(--white);
+}
+
+.MaterialCheckbox > input:checked + span::before,
+.MaterialCheckbox > input:indeterminate + span::before {
+  border-color: var(--white);
+  background: var(--white);
+}
+
+.MaterialCheckbox > input:checked + span::after,
+.MaterialCheckbox > input:indeterminate + span::after {
+  border-color: var(--page);
+}
+
+@media (max-width: 420px) {
+  .ParamsComponent {
+    min-height: 44px;
+  }
+
+  .ParamsComponentLabel {
+    margin-right: 6px;
+    font-size: 0.68em;
+  }
+
+  .ComponentContainer {
+    width: 56%;
+    flex-basis: 56%;
+  }
+
+  .ComponentInput,
+  .InteractiveComponentParams input[type='text'],
+  .InteractiveComponentParams input[type='number'] {
+    width: 68px;
+    min-width: 56px;
+    min-height: 48px;
+    padding-right: 6px;
+    padding-left: 6px;
+    margin-left: 6px;
+    font-size: 0.65em;
+  }
+
+  .InteractiveComponentParams input[type='color'] {
+    width: 48px;
+    height: 48px;
+  }
+
+  .ComponentContainer > select {
+    min-height: 48px;
+  }
+
+  .MaterialSlider > input,
+  .MaterialCheckbox,
+  .MaterialCheckbox > span {
+    min-height: 48px;
+  }
+
+  .MaterialSlider > input {
+    height: 48px;
+  }
+}
+
+.App[data-reading-scale='large'] .InteractiveComponentParams .ComponentInput,
+.App[data-reading-scale='large'] .InteractiveComponentParams input[type='text'],
+.App[data-reading-scale='large'] .InteractiveComponentParams input[type='number'] {
+  width: 96px;
+  min-width: 88px;
 }

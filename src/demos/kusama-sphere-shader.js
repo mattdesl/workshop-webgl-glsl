@@ -1,54 +1,49 @@
-// Ensure ThreeJS is in global scope for the 'examples/'
-global.THREE = require("three");
-
-// Include any additional ThreeJS examples below
-require("three/examples/js/controls/OrbitControls");
-
-const canvasSketch = require("canvas-sketch");
+import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import canvasSketch from "canvas-sketch";
 
 const settings = {
-  // Make the loop animated
   animate: true,
-  // Get a WebGL canvas rather than 2D
-  context: "webgl"
+  context: "webgl2",
 };
 
 const sketch = ({ context }) => {
-  // Create a renderer
   const renderer = new THREE.WebGLRenderer({
-    canvas: context.canvas
+    canvas: context.canvas,
   });
 
-  // WebGL background color
   renderer.setClearColor("#000", 1);
 
-  // Setup a camera
   const camera = new THREE.PerspectiveCamera(50, 1, 0.01, 100);
   camera.position.set(0, 0, -4);
   camera.lookAt(new THREE.Vector3());
 
-  // Setup camera controller
-  const controls = new THREE.OrbitControls(camera, context.canvas);
+  // Setup camera controller safely from standard JSM modules
+  const controls = new OrbitControls(camera, context.canvas);
 
-  // Setup your scene
   const scene = new THREE.Scene();
 
-  // Setup a geometry
   const geometry = new THREE.SphereGeometry(1, 64, 32);
   const baseGeometry = new THREE.IcosahedronGeometry(1, 1);
 
-  // List of points we will pass to the shader
-  const points = baseGeometry.vertices;
+  // Extract vector points safely from modern BufferGeometry Float32 array attributes
+  const points = [];
+  const posAttr = baseGeometry.attributes.position;
+  for (let i = 0; i < posAttr.count; i++) {
+    points.push(
+      new THREE.Vector3(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i)),
+    );
+  }
 
   // Setup a material
   const material = new THREE.ShaderMaterial({
     defines: {
-      POINT_COUNT: points.length
+      POINT_COUNT: points.length,
     },
     uniforms: {
       color: { value: new THREE.Color("tomato") },
       pointColor: { value: new THREE.Color("white") },
-      points: { value: points }
+      points: { value: points },
     },
     vertexShader: /*glsl*/ `
     varying vec3 vPosition;
@@ -76,7 +71,7 @@ const sketch = ({ context }) => {
       
       gl_FragColor = vec4(fragColor, 1.0);
     }
-    `
+    `,
   });
 
   // Setup a mesh with geometry + material
@@ -101,7 +96,7 @@ const sketch = ({ context }) => {
     unload() {
       controls.dispose();
       renderer.dispose();
-    }
+    },
   };
 };
 

@@ -1,39 +1,28 @@
-// Ensure ThreeJS is in global scope for the 'examples/'
-global.THREE = require("three");
-
-// Include any additional ThreeJS examples below
-require("three/examples/js/controls/OrbitControls");
-
-const canvasSketch = require("canvas-sketch");
+import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import canvasSketch from "canvas-sketch";
 
 const settings = {
-  // Make the loop animated
   animate: true,
-  // Get a WebGL canvas rather than 2D
-  context: "webgl"
+  context: "webgl2",
 };
 
 const sketch = ({ context }) => {
-  // Create a renderer
   const renderer = new THREE.WebGLRenderer({
-    canvas: context.canvas
+    canvas: context.canvas,
   });
 
-  // WebGL background color
   renderer.setClearColor("black", 1);
 
-  // Setup a camera
   const camera = new THREE.PerspectiveCamera(50, 1, 0.01, 500);
   camera.position.set(3, 3, -5);
   camera.lookAt(new THREE.Vector3());
 
-  // Setup camera controller
-  const controls = new THREE.OrbitControls(camera, context.canvas);
+  // Setup camera controller cleanly via module instance hook
+  const controls = new OrbitControls(camera, context.canvas);
 
-  // Setup your scene
   const scene = new THREE.Scene();
 
-  // Setup a geometry
   const geometry = new THREE.TorusGeometry(1, 0.5, 32, 64);
 
   const loader = new THREE.TextureLoader();
@@ -49,10 +38,10 @@ const sketch = ({ context }) => {
   const normalStrength = 0.5;
   const material = new THREE.MeshStandardMaterial({
     roughness: 0.85,
-    metalnes: 0.5,
+    metalness: 0.5,
     normalScale: new THREE.Vector2(1, 1).multiplyScalar(normalStrength),
     normalMap,
-    map
+    map,
   });
 
   // Setup a mesh with geometry + material
@@ -87,7 +76,7 @@ const sketch = ({ context }) => {
     unload() {
       controls.dispose();
       renderer.dispose();
-    }
+    },
   };
 };
 

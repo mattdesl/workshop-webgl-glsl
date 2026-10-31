@@ -1,16 +1,21 @@
-attribute float direction;
-attribute vec2 distances;
-attribute vec3 nextPosition;
-attribute vec3 previousPosition;
+precision highp float;
 
-varying vec2 vUv;
-varying vec3 vNormal;
-varying float vDistance;
-varying float vTotalDistance;
+// Three.js provides position and the standard transform uniforms.
+in float direction;
+in vec2 distances;
+in vec3 nextPosition;
+in vec3 previousPosition;
+
+// Outputs to the Fragment shader updated from 'varying' to 'out'
+out vec2 vUv;
+out vec3 vNormal;
+out float vDistance;
+out float vTotalDistance;
 
 const bool miter = false;
 const float miterLimit = 8.0;
 
+// Custom uniforms
 uniform float thickness;
 uniform float totalDistance;
 uniform float time;
@@ -69,7 +74,7 @@ vec4 screenSpaceLine (vec3 posOffset, float computedThickness) {
   // scale normal to line thickness
   normal *= normalLength;
 
-  // Corret aspect
+  // Correct aspect
   normal.x /= aspect;
 
   vec4 finalOffset = vec4(normal * orientation, 0.0, 0.0);
@@ -85,7 +90,6 @@ void main () {
   vUv = vec2(distances.x, direction * 0.5 + 0.5);
 
   vec3 objectNormal = vec3(0.0, 0.0, -1.0);
-  // mat3 normalMatrix2 = transpose(inverse(mat3(modelViewMatrix)));
   vTotalDistance = totalDistance;
   vDistance = distances.y;
   vNormal = normalize(normalMatrix * objectNormal);

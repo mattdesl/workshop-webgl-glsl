@@ -1,5 +1,2 @@
-bower_components
-node_modules
-*.log
-.DS_Store
-.cache
+/node_modules/
+**/node_modules/

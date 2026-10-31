@@ -1,9 +1,7 @@
-import { Mesh } from './InteractiveComponents';
-
-export const metadata = {
-  demo: Mesh,
-  title: 'THREE.Mesh'
-};
+---
+title: "THREE.Mesh"
+demo: mesh
+---
 
 You can crete a [THREE.Mesh](https://threejs.org/docs/#api/en/objects/Mesh) by combining a `THREE.Geometry` and `THREE.Material`.
 

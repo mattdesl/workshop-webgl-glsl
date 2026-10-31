@@ -1,49 +1,37 @@
-// Ensure ThreeJS is in global scope for the 'examples/'
-global.THREE = require("three");
-
-// Include any additional ThreeJS examples below
-require("three/examples/js/controls/OrbitControls");
-
-const canvasSketch = require("canvas-sketch");
+import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import canvasSketch from "canvas-sketch";
 
 const settings = {
-  // Make the loop animated
   animate: true,
-  // Get a WebGL canvas rather than 2D
-  context: "webgl"
+  context: "webgl2",
 };
 
 const sketch = ({ context }) => {
-  // Create a renderer
   const renderer = new THREE.WebGLRenderer({
-    canvas: context.canvas
+    canvas: context.canvas,
   });
 
-  // WebGL background color
   renderer.setClearColor("#000", 1);
 
-  // Setup a camera
   const camera = new THREE.PerspectiveCamera(50, 1, 0.01, 100);
   camera.position.set(4, 4, -4);
   camera.lookAt(new THREE.Vector3());
 
-  // Setup camera controller
-  const controls = new THREE.OrbitControls(camera, context.canvas);
+  // Setup camera controller cleanly via modern ESM modules
+  const controls = new OrbitControls(camera, context.canvas);
 
-  // Setup your scene
   const scene = new THREE.Scene();
 
-  // Setup a geometry
-  const geometry = new THREE.SphereGeometry(1, 32, 16);
+  const geometry = new THREE.IcosahedronGeometry(1, 4); // Fixed structure mapping to support higher precision spheres in Three.js v0.186+
 
   // Setup a loader for textures
   const loader = new THREE.TextureLoader();
   const earthMap = loader.load("src/demos/earth.jpg");
   const moonMap = loader.load("src/demos/moon.jpg");
 
-  // Setup a material
   const material = new THREE.MeshBasicMaterial({
-    map: earthMap
+    map: earthMap,
   });
 
   // Setup a mesh with geometry + material
@@ -51,7 +39,7 @@ const sketch = ({ context }) => {
   scene.add(earth);
 
   const moonMaterial = new THREE.MeshBasicMaterial({
-    map: moonMap
+    map: moonMap,
   });
 
   const moonAnchor = new THREE.Group();
@@ -85,7 +73,7 @@ const sketch = ({ context }) => {
     unload() {
       controls.dispose();
       renderer.dispose();
-    }
+    },
   };
 };
 

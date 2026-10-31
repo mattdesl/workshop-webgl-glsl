@@ -1,35 +1,39 @@
 /** @jsx h */
-const { h } = require("preact");
-const Random = require("canvas-sketch-util/random");
-const { linspace, lerp } = require("canvas-sketch-util/math");
-const InteractiveComponent = require("./InteractiveComponent");
-const createCartesianGrid = require("./createCartesianGrid");
-const UI = require("../util/UI");
+import * as THREE from 'three';
+import { h } from 'preact';
+import Random from 'canvas-sketch-util/random';
+import { linspace, lerp } from 'canvas-sketch-util/math';
+import InteractiveComponent from './InteractiveComponent';
+import createCartesianGrid from './createCartesianGrid';
+import UI from '../util/UI';
+import { executeSafeJavaScript } from './safeJavaScript';
 
 const settings = {
   animate: false,
-  context: "webgl",
+  context: "webgl2",
   attributes: { antialias: true }
 };
 
-const evaluate = (code, params) => {
-  /* eslint no-eval: 0 */
-  return eval(
-    [
-      `;(function () {`,
-      code,
-      ";",
-      `if (typeof vertices === 'undefined') {
-      if (typeof position !== 'undefined' && typeof color !== 'undefined') {
-        var vertices = [ { position, color } ];
-      }
-      }`,
-      `if (typeof vertices === 'undefined') throw new Error("You need to define a 'vertices' array");`,
-      `if (!Array.isArray(vertices)) throw new Error("'vertices' should be an array");`,
-      `return { vertices };`,
-      "})();"
-    ].join("\n")
-  );
+/**
+ * @typedef {{ vertices: unknown[] }} VerticesResult
+ */
+
+/**
+ * Interpret the editor's JavaScript and validate its vertex data.
+ *
+ * @param {string} code User-provided JavaScript text.
+ * @param {Record<string, unknown>} _params Unused component parameters.
+ * @returns {VerticesResult} Validated vertex data.
+ */
+const evaluate = (code, _params) => {
+  const { vertices } = executeSafeJavaScript(code);
+  if (typeof vertices === "undefined") {
+    throw new Error("You need to define a 'vertices' array");
+  }
+  if (!Array.isArray(vertices)) {
+    throw new Error("'vertices' should be an array");
+  }
+  return { vertices };
 };
 
 const sketch = props => {
@@ -99,13 +103,19 @@ const sketch = props => {
   };
 };
 
-module.exports = props => {
-  const params = {
-    @UI.Slider({ visible: false, min: 0, max: 1, step: 0.01 })
-    perspective: 1,
-    @UI.Slider({ visible: true, min: -1, max: 1, step: 0.01 })
-    rotation: 0
-  };
+// Valid class declaration ensuring your IDE passes syntax verification
+class VerticesParams {
+  @UI.Slider({ visible: false, min: 0, max: 1, step: 0.01 })
+  perspective = 1;
+
+  @UI.Slider({ visible: true, min: -1, max: 1, step: 0.01 })
+  rotation = 0;
+}
+
+// Modern default export wrapping our decorated parameter structure
+export default props => {
+  const params = new VerticesParams();
+
   return (
     <InteractiveComponent
       sketch={sketch}

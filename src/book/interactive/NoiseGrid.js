@@ -1,38 +1,56 @@
 /** @jsx h */
-const { h } = require('preact');
-const defined = require('defined');
-const Random = require('canvas-sketch-util/random');
-const { linspace, lerp } = require('canvas-sketch-util/math');
-const InteractiveComponent = require('./InteractiveComponent');
-const createCartesianGrid = require('./createCartesianGrid');
-const createWireframe = require('three-tube-wireframe');
-const UI = require('../util/UI');
+import * as THREE from 'three';
+import { h } from 'preact';
+import Random from 'canvas-sketch-util/random';
+import { linspace, lerp } from 'canvas-sketch-util/math';
+import InteractiveComponent from './InteractiveComponent';
+import createCartesianGrid from './createCartesianGrid';
+import UI from '../util/UI';
+import { compileSafeJavaScript, safeMath, safeThree } from './safeJavaScript';
 
 const settings = {
-  context: 'webgl',
+  context: 'webgl2',
   attributes: { antialias: true }
 };
 
-const RANDOM_KEY = 'DrawCode--Waves--NoiseGrid'
+const RANDOM_KEY = 'DrawCode--Waves--NoiseGrid';
 window[Symbol.for(RANDOM_KEY)] = Random.createRandom();
 
+/**
+ * Compile safe JavaScript for the plane or sphere visualizer.
+ *
+ * @param {string} code User-entered JavaScript statements.
+ * @param {Record<string, unknown>} params Visualizer controls.
+ * @returns {((x: number, z: number) => number) | ((position: THREE.Vector3) => void)}
+ *   A height function or a sphere displacement function.
+ */
 const evaluate = (code, params) => {
-  /* eslint no-eval: 0 */
-  const body = params.sphere
-    ? [ `return (position) => {`,
-      `${code};`,
-    '};' ].join('\n')
-    : [ `return (x, z) => {`,
-        `let y = 0;`,
-        `${code};`,
-        `return y;`,
-      '};' ].join('\n');
-  const str = [
-    `;(function ({ frequency, amplitude, time }, { noise1D, noise2D, noise3D, noise4D }) {`,
-    body,
-    `})(${JSON.stringify(params)}, window[Symbol.for(RANDOM_KEY)])`
-  ].join('\n');
-  return eval(str);
+  const execute = compileSafeJavaScript(code);
+  const random = window[Symbol.for(RANDOM_KEY)];
+  /** @type {Record<string, unknown>} */
+  const noiseBindings = {};
+  ["noise1D", "noise2D", "noise3D", "noise4D"].forEach((name) => {
+    noiseBindings[name] = random[name].bind(random);
+  });
+  const values = {
+    frequency: params.frequency,
+    amplitude: params.amplitude,
+    time: params.timeValue ?? 0,
+    Math: safeMath,
+    THREE: safeThree,
+    ...noiseBindings,
+  };
+
+  if (params.sphere) {
+    return (position) => {
+      execute({ ...values, position });
+    };
+  }
+  return (x, z) => {
+    const { y } = execute({ ...values, x, z, y: 0 });
+    if (typeof y !== 'number') throw new Error('The example must set y to a number');
+    return y;
+  };
 };
 
 const sketch = (props) => {
@@ -41,19 +59,20 @@ const sketch = (props) => {
 
   const grid = createCartesianGrid({
     ...props,
-    // gridSubdivisions: 13,
     showSubdivisions: false
-    // visibleSubdivisions: [ 'z', 'w' ]
   });
 
+  // CRITICAL FIX: Instantiate an empty modern BufferGeometry instead of the deprecated Geometry class
   const mainMesh = new THREE.Mesh(
-    new THREE.Geometry(),
+    new THREE.BufferGeometry(),
     new THREE.MeshBasicMaterial({
       color: 'black',
       wireframe: true
     })
   );
   grid.vertexGroup.add(mainMesh);
+
+  let originalPositions = null;
 
   const updateGeo = (subdivisions) => {
     if (mainMesh.geometry.subdivisions !== subdivisions) {
@@ -68,7 +87,12 @@ const sketch = (props) => {
       }
       
       newGeo.subdivisions = subdivisions;
-      newGeo.originalPositions = newGeo.vertices.map(v => v.clone());
+      
+      // CRITICAL FIX: Cache initial position attributes inside a custom array layout instead of raw vertices
+      const posAttr = newGeo.attributes.position;
+      originalPositions = new Float32Array(posAttr.count * 3);
+      originalPositions.set(posAttr.array);
+
       mainMesh.geometry = newGeo;
     }
   };
@@ -97,36 +121,35 @@ const sketch = (props) => {
       const { data = {} } = props;
       const { evaluateResult, params } = data;
       const { subdivisions, rotation } = params;
-      let y = 0;
 
       updateGeo(subdivisions);
 
-      if (evaluateResult && typeof evaluateResult === 'function') {
-        mainMesh.geometry.vertices.forEach((vertex, i) => {
+      if (evaluateResult && typeof evaluateResult === 'function' && originalPositions) {
+        const posAttr = mainMesh.geometry.attributes.position;
+        const positions = posAttr.array;
+        const tempV = new THREE.Vector3();
+
+        for (let i = 0; i < posAttr.count; i++) {
+          const idx = i * 3;
+          tempV.set(originalPositions[idx], originalPositions[idx + 1], originalPositions[idx + 2]);
+
           if (sphere) {
-            vertex.copy(mainMesh.geometry.originalPositions[i]);
-            evaluateResult(vertex);
+            evaluateResult(tempV);
+            positions[idx] = tempV.x;
+            positions[idx + 1] = tempV.y;
+            positions[idx + 2] = tempV.z;
           } else {
-            let y = evaluateResult(vertex.x, vertex.z);
-            if (typeof y === 'number' && isFinite(y)) {
-              vertex.y = y;
+            let yVal = evaluateResult(tempV.x, tempV.z);
+            if (typeof yVal === 'number' && isFinite(yVal)) {
+              positions[idx + 1] = yVal; // Mutates height index directly inside the Float32 array
             } else {
               throw new Error('Return value is not a finite number');
             }
           }
-        });
-        mainMesh.geometry.verticesNeedUpdate = true;
+        }
+        // CRITICAL FIX: Forces modern Three.js GPU buffers to synchronize with updated coordinates
+        posAttr.needsUpdate = true;
       }
-
-      // vertex.position.set(X, y, Z);
-      // arrow.position.copy(vertex.position);
-      // arrow.position.y = 0;
-      // arrow.line.material.depthTest = false;
-      // arrow.cone.material.depthTest = false;
-      // arrow.setDirection(
-      //   new THREE.Vector3(0, y >= 0 ? 1 : -1, 0)
-      // );
-      // arrow.setLength(Math.abs(y) - grid.cellSize / 2, grid.cellSize * 1.25, grid.cellSize);
       
       grid.scene.rotation.y = rotation * Math.PI;
       grid.render({
@@ -140,43 +163,51 @@ const sketch = (props) => {
     }
   }
 }
+class ParamsConfig {
+  constructor(props) {
+    const { sphere = false, time = false } = props;
+    this.sphere = sphere;
+    this.time = time;
 
-module.exports = (props) => {
-  const {
-    sphere = false,
-    time = false
-  } = props;
+    // Set initial instance values
+    this.rotation = 0;
+    this.subdivisions = 25;
+    this.frequency = 0.9;
+    this.amplitude = 0.25;
+    this.timeValue = -5.0; // Avoid naming collision with the boolean 'time' property
+  }
 
-  const control = {
-    min: -1,
-    max: 1,
-    step: 0.01
-  };
+  @UI.Slider({ visible: true, min: -1, max: 1, step: 0.01 })
+  rotation;
 
-  const params = {
-    sphere,
-    @UI.Slider({ visible: true, min: -1, max: 1, step: 0.01 })
-    rotation: 0,
-    @UI.Slider({ visible: false, min: 2, max: 25, step: 1 })
-    subdivisions: 25,
-    @UI.Slider({ variable: true, min: 0.0001, max: 4, step: 0.01 })
-    frequency: 0.9,
-    @UI.Slider({ variable: true, min: -5, max: 5, step: 0.01 })
-    amplitude: 0.25,
-    @UI.Slider({ variable: true, visible: time, min: -5, max: 5, step: 0.01 })
-    time: 0.0,
-  };
+  @UI.Slider({ visible: false, min: 2, max: 25, step: 1 })
+  subdivisions;
 
-  return <InteractiveComponent
-    sketch={sketch}
-    settings={settings}
-    params={params}
-    code={props.code}
-    evaluate={evaluate}
-    showParams
-    showCanvas
-    showCode
-    thirdPartyKeywords={['noise1D','noise2D','noise3D','noise4D']}
-    size={params.sphere ? 'medium' : 'small'}
-  />;
+  @UI.Slider({ variable: true, min: 0.0001, max: 4, step: 0.01 })
+  frequency;
+
+  @UI.Slider({ variable: true, min: -5, max: 5, step: 0.01 })
+  amplitude;
+
+  @UI.Slider({ variable: true, label: "Time", visible: function() { return this.time; }, min: -5, max: 5, step: 0.01 })
+  timeValue; 
+}
+
+export default (props) => {
+  const params = new ParamsConfig(props);
+
+  return (
+    <InteractiveComponent
+      sketch={sketch}
+      settings={settings}
+      params={params}
+      code={props.code}
+      evaluate={evaluate}
+      showParams
+      showCanvas
+      showCode
+      thirdPartyKeywords={['noise1D', 'noise2D', 'noise3D', 'noise4D']}
+      size={params.sphere ? 'medium' : 'small'}
+    />
+  );
 };

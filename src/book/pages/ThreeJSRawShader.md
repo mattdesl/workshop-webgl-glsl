@@ -1,10 +1,12 @@
-import { RawShaderMaterial } from './InteractiveComponents';
+---
+title: "THREE.RawShaderMaterial"
+demo: raw-shader-material
+---
 
-export const metadata = {
-  demo: RawShaderMaterial,
-  title: 'THREE.RawShaderMaterial'
-};
+You can also write raw GLSL without Three.js built-ins using
+`RawShaderMaterial`. For GLSL ES 3.00, set `glslVersion: THREE.GLSL3` and
+declare the attributes and uniforms your shader needs. Three.js adds the
+version directive to the shader source.
 
-You can also write raw GLSL without any ThreeJS builtins using `RawShaderMaterial`.
-
-This is useful if you are bringing shaders from other graphics engines and don't want to conflict with the predefined ThreeJS variables.
+This is useful when bringing shaders from other graphics engines or when you
+want to manage the complete shader interface yourself.

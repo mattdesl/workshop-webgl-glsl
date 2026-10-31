@@ -1,53 +1,123 @@
-export const metadata = {
-  title: 'GLSL Syntax'
-};
+---
+title: "GLSL Syntax"
+---
 
-# GLSL Syntax
+These examples use GLSL ES 3.00 for WebGL 2. In standalone WebGL 2 shader
+files, put `#version 300 es` on the first line. Three.js adds that directive
+for `THREE.ShaderMaterial` when its `glslVersion` is set to `THREE.GLSL3`, so
+leave it out of shader strings passed to Three.js.
 
-Shaders will always have a `main` function, like so:
+Shaders have a `main` function. This fragment shader writes a constant color:
 
 ```glsl
+#version 300 es
+precision highp float;
+out vec4 fragColor;
+
 void main () {
-  // ... shader functionality ...
+  fragColor = vec4(1.0, 0.25, 0.1, 1.0);
 }
 ```
 
-When you create variables, you have to specify their type:
+A `vec4` contains red, green, blue, and alpha components.
 
-- `float` - a simple float value, e.g. `0.75`
+## Types and constructors
 
-- `vec2`, `vec3`, `vec4` - vectors like `(x, y)` or `(r, g, b)`
-
-- `int` - integer, e.g. `4`
-
-- `bool` - boolean `true` or `false`
-
-- `sampler2D` — holds a WebGL texture
-
-- `mat2`, `mat3`, `mat4` - matrix data types
-
-For example:
+Common types include `float`, `int`, `bool`, `vec2`, `vec3`, `vec4`, and
+matrix types such as `mat3` and `mat4`. Constructors combine scalar and vector
+values:
 
 ```glsl
-void  main () {
-  float a = 25.0;
+#version 300 es
+precision highp float;
+out vec4 fragColor;
+
+void main () {
+  float alpha = 0.5;
   int i = 5;
-  bool b = true;
+  bool enabled = true;
+  vec3 rgb = vec3(1.0, 0.5, 0.0);
+  vec4 myRGBA = vec4(rgb, alpha);
+  fragColor = myRGBA;
 }
 ```
 
-The *vec* types accept other vectors as parameters, but you have to make sure the number of components match:
+Write decimal points for floating-point values, such as `1.0`.
 
-```glsl 
-float alpha = 0.5;
-vec3 rgb = vec3(1.0); // (1, 1, 1)
-vec4 myRGBA = vec4(rgb, alpha); // (1, 1, 1, 0.5)
-```
+## Vector components
 
-You can access vectors with `.xyzw` or `.rgba`:
+Use `.xyzw` or `.rgba` to access vector components. These names refer to the
+same components. A swizzle can reorder or repeat them:
 
 ```glsl
-vec2 xy = myRGBA.xy;
-vec2 rgb = myRGBA.rgb;
-float alpha = myRGBA.a;
+#version 300 es
+precision highp float;
+out vec4 fragColor;
+
+void main () {
+  vec4 myRGBA = vec4(1.0, 0.5, 0.25, 1.0);
+  vec2 xy = myRGBA.xy;
+  vec3 rgb = myRGBA.rgb;
+  float alpha = myRGBA.a;
+  fragColor = vec4(xy, rgb.x + alpha, 1.0);
+}
 ```
+
+## Inputs from JavaScript
+
+A `uniform` is a value supplied by JavaScript and shared by shader
+invocations. Vertex shader outputs are declared with `out` and received by
+the fragment shader with a matching `in` declaration:
+
+```glsl
+#version 300 es
+precision highp float;
+
+in vec2 uv;
+in vec3 position;
+uniform mat4 projectionMatrix;
+uniform mat4 modelViewMatrix;
+out vec2 vUv;
+
+void main () {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix *
+    vec4(position, 1.0);
+}
+```
+
+For Three.js `ShaderMaterial`, the `position` and `uv` attributes and matrix
+uniforms are built in. Do not redeclare them.
+
+```glsl
+#version 300 es
+precision highp float;
+
+uniform float uTime;
+in vec2 vUv;
+out vec4 fragColor;
+
+void main () {
+  vec3 color = 0.5 + 0.5 * cos(
+    uTime + vUv.xyx + vec3(0.0, 2.0, 4.0)
+  );
+  fragColor = vec4(color, 1.0);
+}
+```
+
+The fragment shader declares a floating-point precision. This example uses
+time and interpolated texture coordinates to vary the color.
+
+## Functions
+
+GLSL includes math functions such as `sin`, `cos`, `length`, `dot`, and
+`smoothstep`. You can define your own functions:
+
+```glsl
+float circleMask(vec2 point, float radius) {
+  return 1.0 - smoothstep(radius, radius + 0.01, length(point));
+}
+```
+
+Functions have a return type and typed parameters. `void` means that a
+function does not return a value.

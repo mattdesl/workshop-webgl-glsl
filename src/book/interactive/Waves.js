@@ -1,50 +1,60 @@
 /** @jsx h */
-const { h } = require('preact');
-const defined = require('defined');
-const Random = require('canvas-sketch-util/random');
-const { linspace, lerp } = require('canvas-sketch-util/math');
-const InteractiveComponent = require('./InteractiveComponent');
-const createCartesianGrid = require('./createCartesianGrid');
-const UI = require('../util/UI');
-const createLine3D = require('../util/createLine3D');
+import * as THREE from 'three';
+import { h } from 'preact';
+import defined from 'defined';
+import Random from 'canvas-sketch-util/random';
+import { linspace, lerp } from 'canvas-sketch-util/math';
+import InteractiveComponent from './InteractiveComponent';
+import createCartesianGrid from './createCartesianGrid';
+import UI from '../util/UI';
+import createLine3D from '../util/createLine3D';
+import { compileSafeJavaScript, safeMath } from './safeJavaScript';
 
 const settings = {
-  context: 'webgl',
+  context: 'webgl2',
   attributes: { antialias: true }
 };
 
-const RANDOM_KEY = 'DrawCode--Waves--Random'
+const RANDOM_KEY = 'DrawCode--Waves--Random';
 window[Symbol.for(RANDOM_KEY)] = Random.createRandom();
 
+/**
+ * Compile safe JavaScript for the wave visualizer.
+ *
+ * @param {string} code User-entered JavaScript statements.
+ * @param {Record<string, unknown>} params Wave controls and optional noise name.
+ * @returns {(x: number) => number} Function evaluated for each wave coordinate.
+ */
 const evaluate = (code, params) => {
-  /* eslint no-eval: 0 */
+  const execute = compileSafeJavaScript(code);
   const functionName = params.functionName;
-  const fnParams = [
-    '{ frequency, phase, amplitude }',
-    functionName
-  ].filter(Boolean);
-  const fnParamValues = [ JSON.stringify(params) ];
+  /** @type {Record<string, unknown>} */
+  const noiseBinding = {};
   if (functionName) {
-    fnParamValues.push(
-      `window[Symbol.for(RANDOM_KEY)].${functionName}`
-    );
+    if (!["noise1D", "noise2D", "noise3D", "noise4D"].includes(functionName)) {
+      throw new Error(`Unsupported noise function '${functionName}'`);
+    }
+    const random = window[Symbol.for(RANDOM_KEY)];
+    noiseBinding[functionName] = random[functionName].bind(random);
   }
-  
-  const str = [
-    `;(function (${fnParams.join(', ')}) {`,
-    `return (x, z) => {`,
-      `let y = 0;`,
-      `${code};`,
-      `return y;`,
-    '};',
-    `})(${fnParamValues.join(', ')})`
-  ].join('\n');
-  return eval(str);
+
+  return (x) => {
+    const { y } = execute({
+      x,
+      y: 0,
+      frequency: params.frequency,
+      phase: params.phase,
+      amplitude: params.amplitude,
+      Math: safeMath,
+      ...noiseBinding,
+    });
+    if (typeof y !== 'number') throw new Error('The example must set y to a number');
+    return y;
+  };
 };
 
 const sketch = (props) => {
   const { data = {} } = props;
-  const { } = data.params;
 
   const grid = createCartesianGrid({
     ...props,
@@ -107,7 +117,6 @@ const sketch = (props) => {
     render (props) {
       const { data = {} } = props;
       const { evaluateResult, params } = data;
-      const { seed = 0 } = params;
       lastEval = evaluateResult;
       update(evaluateResult);
       grid.render({
@@ -119,42 +128,41 @@ const sketch = (props) => {
       canvas.removeEventListener('click', clicked);
       grid.unload(props);
     }
+  };
+};
+
+// Extracted parameter template supporting standard class decorators
+class WavesParams {
+  @UI.Slider({ variable: true, min: -15, max: 15, step: 0.01 })
+  frequency = 1;
+
+  @UI.Slider({ variable: true, min: -5, max: 5, step: 0.01 })
+  amplitude = 1;
+
+  @UI.Slider({ variable: true, min: -5, max: 5, step: 0.01 })
+  phase = 0;
+
+  constructor(props) {
+    this.functionName = props.functionName;
+    this.noiseGrid = Boolean(props.noiseGrid);
   }
 }
 
-module.exports = (props) => {
-  const {
-  } = props;
+export default (props) => {
+  const params = new WavesParams(props);
 
-  const control = {
-    min: -1,
-    max: 1,
-    step: 0.01
-  };
-
-  // const seed = 0;
-  // const random = Random.createRandom(seed);
-  const params = {
-    functionName: props.functionName,
-    noiseGrid: Boolean(props.noiseGrid),
-    @UI.Slider({ variable: true, min: -15, max: 15, step: 0.01 })
-    frequency: 1,
-    @UI.Slider({ variable: true, min: -5, max: 5, step: 0.01 })
-    amplitude: 1,
-    @UI.Slider({ variable: true, min: -5, max: 5, step: 0.01 })
-    phase: 0,
-  };
-
-  return <InteractiveComponent
-    sketch={sketch}
-    settings={settings}
-    params={params}
-    code={props.code}
-    evaluate={evaluate}
-    showCode
-    showParams
-    showCanvas
-    thirdPartyKeywords={['noise1D','noise2D','noise3D','noise4D']}
-    size='medium'
-  />;
+  return (
+    <InteractiveComponent
+      sketch={sketch}
+      settings={settings}
+      params={params}
+      code={props.code}
+      evaluate={evaluate}
+      showCode
+      showParams
+      showCanvas
+      thirdPartyKeywords={['noise1D','noise2D','noise3D','noise4D']}
+      size='medium'
+    />
+  );
 };

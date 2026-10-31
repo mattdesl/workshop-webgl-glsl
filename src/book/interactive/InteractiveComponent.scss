@@ -1,244 +1,426 @@
 .InteractiveComponent {
-  width: 100%;
-  height: 400px;
-  flex-grow: 1;
-  flex-shrink: 0;
-  border-radius: 5px;
-  box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.1);
   position: relative;
-  border: 1px solid #e0e0e0;
-  box-sizing: border-box;
-
-  // border-radius: 5px;
-  overflow: hidden;
   display: flex;
+  align-items: stretch;
   justify-content: stretch;
   flex-direction: row;
-  // margin-top: 30px;
-  // margin-bottom: 30px;
-  // min-height: 200px;
-  align-items: stretch;
+  width: 100%;
+  height: clamp(460px, 65vh, 620px);
+  height: clamp(460px, 65dvh, 620px);
+  min-height: 460px;
+  flex-grow: 1;
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 2px;
+  background: var(--surface);
+  box-shadow: 0 24px 80px var(--shadow);
+  isolation: isolate;
+  animation: workspace-enter 520ms var(--ease-out) both;
+  will-change: transform, opacity;
+  transition: border-color 260ms var(--ease-out), box-shadow 320ms var(--ease-out);
 
-  max-width: 1080px;
-  &.small {
-    max-width: 720px;
+  &:hover {
+    border-color: var(--line-strong);
+    box-shadow: 0 28px 90px var(--shadow-lift);
   }
-  &.medium {
-    max-width: 960px;
-  }
-  &.large {
-    max-width: 1080px;
-  }
+
+  &.small,
+  &.medium,
+  &.large { max-width: min(100%, 1180px); }
   &.full {
     max-width: initial;
-    height: 500px;
+    height: min(760px, 75vh);
+    height: min(760px, 75dvh);
+    min-height: 420px;
   }
 
   &:fullscreen {
-    width: initial;
-    height: initial;
-    border-radius: 0px;
+    position: fixed;
+    inset: 0;
+    z-index: 2147483646;
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+  }
+
+  &.is-fullscreen-fallback {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483646;
+    width: 100vw;
+    max-width: none;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
   }
 }
-.App.large .InteractiveComponent {
-  &.small {
-    max-width: 960px;
+
+@media (min-width: 761px) {
+  .App[data-reading-scale='large'] .InteractiveComponent {
+    height: min(780px, 82dvh);
+    min-height: 620px;
   }
-  &.medium {
-    max-width: 1080px;
-  }
-  &.large {
-    max-width: 1280px;
+
+  .App[data-reading-scale='large'] .InteractiveComponent > .InteractiveComponentParams {
+    width: 38%;
+    flex-basis: 38%;
+    padding: 16px;
   }
 }
+
 .InteractiveComponentPanel {
-  height: 100%;
-  flex-basis: 33%;
-
-  flex-shrink: 2;
-  flex-grow: 1;
-
   display: flex;
-  justify-content: stretch;
   align-items: stretch;
+  justify-content: stretch;
+  flex: 0 1 56%;
   flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  border-right: 1px solid var(--line);
+  background: var(--surface-raised);
+  transition: background-color 420ms var(--ease-out), border-color 420ms var(--ease-out);
 
   .InteractiveComponentParams {
-    border-top: 1px solid #e0e0e0;
+    flex: 0 1 32%;
+    max-height: 100%;
+    border-top: 1px solid var(--line);
     border-left: 0;
   }
 }
+
 .InteractiveComponentCanvasContainer {
-  flex-basis: 40%;
-  flex-shrink: 1;
-  // min-height: 200px;
-  min-width: 100px;
-
-  display: flex;
-  justify-content: flex-start;
-  align-items: flex-start;
-  flex-direction: column;
-
-  flex-grow: 1;
   position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  flex: 1 1 0;
+  flex-direction: column;
   width: 100%;
   height: 100%;
+  min-width: 0;
+  min-height: 180px;
   overflow: hidden;
+  background: var(--canvas-bg);
+  transition: background-color 420ms var(--ease-out);
 }
-.InteractiveComponentPanel {
-  .InteractiveComponentCanvasContainer {
-    flex-basis: 90%;
-  }
-  .InteractiveComponentParams {
-    flex-basis: 10%;
-  }
+
+.InteractiveComponentCanvasContainer.has-runtime-error {
+  background: var(--error-panel);
 }
+
+.InteractiveComponentCanvasContainer.has-runtime-error::after {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--line-strong);
+  background: var(--error-shade);
+  content: '';
+  pointer-events: none;
+}
+
 .THREEDOMTextLabel {
+  position: absolute;
+  top: 0;
+  left: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: absolute;
   text-align: center;
+  vertical-align: middle;
   user-select: none;
   pointer-events: none;
-  vertical-align: middle;
-  top: 0;
-  left: 0;
 }
-.InteractiveComponentCanvasContainer.has-runtime-error::after {
-  border-radius: 0px;
-  box-sizing: border-box;
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  background: rgba(150, 0, 0, 0.85);
-  top: 0;
-  content: ' ';
-  display: block;
-  z-index: 5;
-  left: 0;
-  pointer-events: none;
-}
+
 .InteractiveComponentCanvasErrorHeader {
-  font-weight: 300;
-  font-size: 12px;
-  line-height: 2;
-  color: pink;
   margin-bottom: 5px;
+  color: var(--error-text);
+  font-size: 0.68em;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  line-height: 2;
+  text-transform: uppercase;
 }
-.App.large .InteractiveComponentCanvasErrorHeader {
-  font-size: 16px;
-}
+
 .InteractiveComponentCanvasError {
   position: relative;
-  flex-direction: column;
   top: 0;
   left: 0;
+  display: none;
+  flex-direction: column;
+  box-sizing: border-box;
   width: 100%;
   height: 100%;
-  display: none;
-  padding: 20px;
-  color: white;
+  padding: clamp(16px, 3vw, 28px);
   z-index: 6;
-  font-size: 12px;
-  box-sizing: border-box;
-  line-height: 1.5;
+  color: var(--error-text);
+  font-size: 0.75em;
+  line-height: 1.6;
+  overflow: auto;
 }
-.App.large .InteractiveComponentCanvasError {
-  font-size: 16px;
-}
+
 .InteractiveComponentCanvas {
-  user-select: none;
   position: absolute;
   top: 0;
   left: 0;
+  display: block;
+  user-select: none;
 }
+
 .InteractiveComponentParams {
-  // min-height: 200px;
-  padding: 10px;
   box-sizing: border-box;
-  flex-basis: 30%;
-  flex-shrink: 2;
-  flex-grow: 0;
-  // height: 100%;
   width: 100%;
-  background: #f1f1f1;
-  
-  border-left: 1px solid #e0e0e0;
-  
+  min-width: 0;
+  padding: 12px 14px;
+  flex: 0 1 28%;
+  overflow: auto;
+  border-left: 1px solid var(--line);
+  background: var(--param-bg);
+  color: var(--ink);
+  scrollbar-color: var(--line-strong) transparent;
+  transition: background-color 420ms var(--ease-out), color 420ms var(--ease-out), border-color 420ms var(--ease-out);
+  scrollbar-width: thin;
+  container-type: inline-size;
 }
+
 .InteractiveComponentCode {
   display: block;
   overflow: hidden;
-  flex-basis: 66%;
-  flex-shrink: 1;
-  align-items: stretch;
-  flex-grow: 1;
-  max-width: 66%;
+  box-sizing: border-box;
   width: 100%;
+  max-width: 66%;
   height: 100%;
-  background: inherit;
-  background: white;
+  flex: 1 1 57%;
+  border-left: 1px solid var(--line);
+  background: var(--editor-bg);
+  transition: background-color 420ms var(--ease-out), border-color 420ms var(--ease-out);
 }
+
 .InteractiveComponentToolbar {
   position: absolute;
-  bottom: 0;
-  right: 0;
+  right: 10px;
+  bottom: 10px;
   z-index: 100;
-  padding: 10px;
-
   display: flex;
-  justify-content: space-between;
   align-items: center;
   flex-direction: row;
-
-  :first-child {
-  }
+  gap: 6px;
+  padding: 0;
+  will-change: transform, opacity;
 }
 
 .InteractiveComponentToolbarButton {
-  border: none;
-  background: white;
-  margin: 0;
-  border-radius: 5px;
-  overflow: hidden;
-  box-sizing: content-box;
-
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   flex-direction: row;
-  
-  padding: 5px;
+  box-sizing: border-box;
+  width: 48px;
+  height: 48px;
+  padding: 13px;
   margin: 0;
-  width: 18px;
-  outline-color: white;
-  box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.1);
-  cursor: pointer;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 0;
   outline: 0;
-  
-  &:first-child {
-    margin-right: 10px;
+  background: var(--chrome-bg);
+  color: var(--white);
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  transition: background-color 220ms var(--ease-out), border-color 220ms var(--ease-out), transform 220ms var(--ease-spring);
+  -webkit-tap-highlight-color: transparent;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--white);
+    background: var(--white);
   }
 
-  // &:focus {
-  //   outline-width: 1px;
-  //   outline-style: dashed;
-  //   outline-color: rgba(255, 255, 255, 0.5);
-  // }
-  
-  img, svg {
-    // border-radius: 5px;
-    border: none;
+  &:active {
+    transform: scale(0.94);
+  }
 
-    padding: 0px;
-    margin: 0;
-    background: transparent;
+  &:hover img,
+  &:focus-visible img {
+    filter: var(--active-icon-filter);
+    opacity: 1;
+  }
 
-    width: 100%;
-    height: 100%;
+  &:focus-visible {
+    outline: 1px solid var(--white);
+    outline-offset: 2px;
+  }
+
+  img,
+  svg {
+    display: block;
+    width: 20px;
+    height: 20px;
     padding: 0;
     margin: 0;
+    border: 0;
+    background: transparent;
+    filter: var(--icon-filter);
+    opacity: 0.88;
+    transition: filter 220ms var(--ease-out), opacity 220ms var(--ease-out);
+  }
+}
+
+@keyframes workspace-enter {
+  from { opacity: 0; transform: translate3d(0, 10px, 0) scale(0.992); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@media (max-width: 760px) {
+  .InteractiveComponent,
+  .InteractiveComponent.full {
+    height: auto;
+    max-height: none;
+    min-height: 0;
+    flex: 0 1 auto;
+    flex-direction: column;
+    overflow: visible;
   }
 
+  .InteractiveComponent:fullscreen,
+  .InteractiveComponent.is-fullscreen-fallback {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .InteractiveComponentPanel {
+    box-sizing: border-box;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    flex: 0 0 auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .InteractiveComponentPanel .InteractiveComponentParams {
+    box-sizing: border-box;
+    min-height: 0;
+    max-height: none;
+    flex: 0 0 auto;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .InteractiveComponentPanel .InteractiveComponentCanvasContainer {
+    height: clamp(230px, 68vw, 380px);
+    min-height: 230px;
+    flex: 0 0 auto;
+  }
+
+  .InteractiveComponent > .InteractiveComponentCanvasContainer {
+    height: clamp(250px, 72vw, 420px);
+    min-height: 250px;
+    flex: 0 0 auto;
+  }
+
+  .InteractiveComponent > .InteractiveComponentParams {
+    min-height: 0;
+    flex: 0 0 auto;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .InteractiveComponentCode {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: none;
+    min-height: 300px;
+    height: clamp(300px, 52vh, 440px);
+    flex: 0 0 auto;
+    border-top: 0;
+    border-left: 0;
+  }
+
+  .InteractiveComponent:fullscreen .InteractiveComponentPanel,
+  .InteractiveComponent.is-fullscreen-fallback .InteractiveComponentPanel {
+    height: 58%;
+    min-height: 0;
+    flex: 0 0 58%;
+    overflow: hidden;
+  }
+
+  .InteractiveComponent:fullscreen .InteractiveComponentPanel .InteractiveComponentCanvasContainer,
+  .InteractiveComponent.is-fullscreen-fallback .InteractiveComponentPanel .InteractiveComponentCanvasContainer {
+    height: auto;
+    min-height: 0;
+    flex: 1 1 auto;
+  }
+
+  .InteractiveComponent:fullscreen .InteractiveComponentPanel .InteractiveComponentParams,
+  .InteractiveComponent.is-fullscreen-fallback .InteractiveComponentPanel .InteractiveComponentParams {
+    min-height: 0;
+    max-height: 40%;
+    flex: 0 0 auto;
+  }
+
+  .InteractiveComponent:fullscreen > .InteractiveComponentCanvasContainer,
+  .InteractiveComponent.is-fullscreen-fallback > .InteractiveComponentCanvasContainer {
+    height: auto;
+    min-height: 0;
+    flex: 1 1 auto;
+  }
+
+  .InteractiveComponent:fullscreen > .InteractiveComponentParams,
+  .InteractiveComponent.is-fullscreen-fallback > .InteractiveComponentParams {
+    min-height: 0;
+    max-height: 38%;
+    flex: 0 0 auto;
+  }
+
+  .InteractiveComponent:fullscreen .InteractiveComponentCode,
+  .InteractiveComponent.is-fullscreen-fallback .InteractiveComponentCode {
+    height: 42%;
+    min-height: 0;
+    flex: 1 1 42%;
+  }
+
+  .InteractiveComponentToolbar {
+    right: 8px;
+    top: 8px;
+    bottom: auto;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 400px) {
+  .InteractiveComponentParams {
+    padding: 8px 9px;
+  }
+
+  .InteractiveComponentToolbar {
+    right: 6px;
+    top: 6px;
+  }
+}
+
+@media (max-width: 760px) {
+  .App[data-reading-scale='large'] .InteractiveComponent:not(:fullscreen):not(.is-fullscreen-fallback) {
+    height: auto;
+    min-height: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .InteractiveComponent,
+  .InteractiveComponent * {
+    transition-duration: 0.01ms ;
+  }
 }

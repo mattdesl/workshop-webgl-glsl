@@ -1,5 +1,5 @@
-export const metadata = {
-  title: 'THREE.Group'
-};
+---
+title: "THREE.Group"
+---
 
-# THREE.Group
+

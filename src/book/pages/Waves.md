@@ -1,9 +1,7 @@
-import { SineWave } from './InteractiveComponents';
-
-export const metadata = {
-  demo: SineWave,
-  title: 'Wave Functions'
-};
+---
+title: "Wave Functions"
+demo: sine-wave
+---
 
 Before jumping into noise, let's familiarize ourselves with *wave functions*, like a simple *sine wave*.
 

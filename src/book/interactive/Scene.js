@@ -1,31 +1,38 @@
 /** @jsx h */
-const { h } = require('preact');
-const Random = require('canvas-sketch-util/random');
-const { linspace, lerp } = require('canvas-sketch-util/math');
-const InteractiveComponent = require('./InteractiveComponent');
-const createCartesianGrid = require('./createCartesianGrid');
-const UI = require('../util/UI');
+import * as THREE from 'three';
+import { h } from 'preact';
+// CRITICAL FIX: Explicitly import modern OrbitControls module
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import Random from 'canvas-sketch-util/random';
+import { linspace, lerp } from 'canvas-sketch-util/math';
+import InteractiveComponent from './InteractiveComponent';
+import createCartesianGrid from './createCartesianGrid';
+import UI from '../util/UI';
+import { executeSafeJavaScript, safeMath, safeThree } from './safeJavaScript';
 
 const settings = {
   animate: true,
-  context: 'webgl',
+  context: 'webgl2',
   attributes: { antialias: true }
 };
 
-const evaluate = (code, params) => {
-  /* eslint no-eval: 0 */
-  return eval([
-    `;(function () {`,
-    code,
-    ';',
-    `return { scene };`,
-    '})();'
-  ].join('\n'));
+/**
+ * Build the scene by interpreting the editor's restricted JavaScript.
+ *
+ * @param {string} code User-provided JavaScript statements.
+ * @param {Record<string, unknown>} _params Unused component parameters.
+ * @returns {{ scene: THREE.Scene }} A scene containing configured meshes.
+ */
+const evaluate = (code, _params) => {
+  const { scene } = executeSafeJavaScript(code, { THREE: safeThree, Math: safeMath });
+  if (!(scene instanceof THREE.Scene)) {
+    throw new Error("You need to define a Three.js 'scene'");
+  }
+  return { scene };
 }
 
 const sketch = (props) => {
   const { params } = props.data || {};
-  const {} = params;
   const { context } = props;
 
   const renderer = new THREE.WebGLRenderer({ context });
@@ -36,7 +43,8 @@ const sketch = (props) => {
   camera.position.set(15, 15, 15);
   camera.lookAt(new THREE.Vector3());
 
-  const controls = new THREE.OrbitControls(camera, context.canvas);
+  // Instantiate controls directly from the native module hook
+  const controls = new OrbitControls(camera, context.canvas);
   controls.enableZoom = false;
   controls.enablePan = false;
   controls.enableDamping = true;
@@ -68,7 +76,7 @@ const sketch = (props) => {
       camera.updateProjectionMatrix();
     },
     onCodeUpdate (props) {
-      const { evaluateResult, params } = props.data || {};
+      const { evaluateResult } = props.data || {};
 
       clearGroup();
       
@@ -92,21 +100,27 @@ const sketch = (props) => {
   };
 }
 
-module.exports = (props) => {
-  const params = {
-    @UI.Slider({ visible: false, min: 0, max: 1, step: 0.01 })
-    perspective: 1,
-    @UI.Slider({ visible: false, min: -1, max: 1, step: 0.01 })
-    rotation: 0,
-  };
-  return <InteractiveComponent
-    sketch={sketch}
-    settings={settings}
-    code={props.code}
-    evaluate={evaluate}
-    params={params}
-    showCode
-    showCanvas
-    size='medium'
-  />;
+class ParamsConfig {
+  @UI.Slider({ visible: false, min: 0, max: 1, step: 0.01 })
+  perspective = 1;
+
+  @UI.Slider({ visible: false, min: -1, max: 1, step: 0.01 })
+  rotation = 0;
+}
+
+export default (props) => {
+  const params = new ParamsConfig();
+  
+  return (
+    <InteractiveComponent
+      sketch={sketch}
+      settings={settings}
+      code={props.code}
+      evaluate={evaluate}
+      params={params}
+      showCode
+      showCanvas
+      size='medium'
+    />
+  );
 };

@@ -1,4 +1,5 @@
 /** @jsx h */
+
 import { h } from "preact";
 import IndicesComponent from "../interactive/Indices";
 import VerticesComponent from "../interactive/Vertices";
@@ -17,6 +18,7 @@ export const ShaderFullscreen = props => (
 
 uniform vec2 resolution;
 uniform float time;
+out vec4 fragColor;
 
 void main () {
   // Normalized pixel coordinates (from 0 to 1)
@@ -26,7 +28,7 @@ void main () {
   vec3 col = 0.5 + 0.5 * cos(time + uv.xyx + vec3(0.0, 2.0, 4.0));
 
   // Output to screen
-  gl_FragColor = vec4(col,1.0);
+  fragColor = vec4(col,1.0);
 }`}
   />
 );
@@ -36,31 +38,27 @@ export const ShaderVaryings = props => (
     {...props}
     geometryType={"box"}
     material
-    code={`const vertexShader = \`
-  varying vec2 vUv;
-
+    code={`const vertexShader = ` + "`" + `
+  out vec2 vUv;
   void main () {
     vUv = uv;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
-\`;
-
-const fragmentShader = \`
-  varying vec2 vUv;
+` + "`" + `;
+const fragmentShader = ` + "`" + `
+  in vec2 vUv;
   uniform vec3 color;
-
+  out vec4 fragColor;
   void main () {
     float d = vUv.y;
-    gl_FragColor = vec4(color * d, 1.0);
+    fragColor = vec4(color * d, 1.0);
   }
-\`;
-
+` + "`" + `;
 const material = new THREE.ShaderMaterial({
+  glslVersion: THREE.GLSL3,
   vertexShader,
   fragmentShader,
-  uniforms: {
-    color: { value: new THREE.Color('tomato') },
-  }
+  uniforms: { color: { value: new THREE.Color('tomato') } }
 });`}
   />
 );
@@ -70,25 +68,23 @@ export const ShaderMaterial = props => (
     {...props}
     geometryType={"torus"}
     material
-    code={`const vertexShader = \`
+    code={`const vertexShader = ` + "`" + `
   void main () {
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
-\`;
-
-const fragmentShader = \`
+` + "`" + `;
+const fragmentShader = ` + "`" + `
   uniform vec3 color;
+  out vec4 fragColor;
   void main () {
-    gl_FragColor = vec4(color, 1.0);
+    fragColor = vec4(color, 1.0);
   }
-\`;
-
+` + "`" + `;
 const material = new THREE.ShaderMaterial({
+  glslVersion: THREE.GLSL3,
   vertexShader,
   fragmentShader,
-  uniforms: {
-    color: { value: new THREE.Color('red') }
-  }
+  uniforms: { color: { value: new THREE.Color('red') } }
 });`}
   />
 );
@@ -98,34 +94,28 @@ export const RawShaderMaterial = props => (
     {...props}
     geometryType={"torus"}
     material
-    code={`const vertexShader = \`
+    code={`const vertexShader = ` + "`" + `
   precision highp float;
-
-  attribute vec3 position;
-
+  in vec3 position;
   uniform mat4 projectionMatrix;
   uniform mat4 modelViewMatrix;
-
   void main () {
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
-\`;
-
-const fragmentShader = \`
+` + "`" + `;
+const fragmentShader = ` + "`" + `
   precision highp float;
-
+  out vec4 fragColor;
   uniform vec3 color;
   void main () {
-    gl_FragColor = vec4(color, 1.0);
+    fragColor = vec4(color, 1.0);
   }
-\`;
-
+` + "`" + `;
 const material = new THREE.RawShaderMaterial({
+  glslVersion: THREE.GLSL3,
   vertexShader,
   fragmentShader,
-  uniforms: {
-    color: { value: new THREE.Color('red') }
-  }
+  uniforms: { color: { value: new THREE.Color('red') } }
 });`}
   />
 );
@@ -138,7 +128,7 @@ export const VertexShader = props => (
     code={`precision highp float;
 
 // Geometry data from each vertex
-attribute vec3 position;
+in vec3 position;
 
 // JS data from ThreeJS camera + transforms
 uniform mat4 projectionMatrix;
@@ -165,11 +155,12 @@ export const FragmentShader = props => (
     vertex={false}
     code={`precision highp float;
 
+out vec4 fragColor;
 uniform vec3 color;
 uniform float opacity;
 
 void main () {
-  gl_FragColor = vec4(color, opacity);
+  fragColor = vec4(color, opacity);
 }`}
   />
 );
@@ -218,14 +209,8 @@ export const Noise3DSphere = props => (
   position.y * frequency,
   position.z * frequency
 ) * amplitude;
-
-// Get the vertex normal
 const normal = position.clone().normalize();
-
-// Scale the normal by noise
 normal.multiplyScalar(n);
-
-// Translate position by scaled normal
 position.add(normal);`}
   />
 );
@@ -238,18 +223,14 @@ export const Scene = props => {
 
 const cube = new THREE.Mesh(
   new THREE.BoxGeometry(1, 1, 1),
-  new THREE.MeshBasicMaterial({
-    color: 'red'
-  })
+  new THREE.MeshBasicMaterial({ color: 'red' })
 );
 cube.position.set(0, 0, 0);
 scene.add(cube);
 
 const sphere = new THREE.Mesh(
   new THREE.SphereGeometry(1, 16, 16),
-  new THREE.MeshBasicMaterial({
-    color: 'blue'
-  })
+  new THREE.MeshBasicMaterial({ color: 'blue' })
 );
 sphere.position.set(-3, 0, 2);
 scene.add(sphere);`}
@@ -301,11 +282,7 @@ export const Mesh = props => {
     <MeshComponent
       {...props}
       code={`// Create a geometric structure
-const geometry = new THREE.SphereGeometry(
-  0.5,
-  32,
-  16
-);
+const geometry = new THREE.SphereGeometry(0.5, 32, 16);
 
 // And define a surface material
 const material = new THREE.MeshPhongMaterial({
@@ -313,7 +290,7 @@ const material = new THREE.MeshPhongMaterial({
   flatShading: true
 });
 
-// Build a mesh from the two
+// Build a mesh from the geometry and material
 const mesh = new THREE.Mesh(geometry, material);`}
     />
   );
@@ -330,10 +307,9 @@ export const Faces = props => {
   { position: [ 0.5, 0.5, 0 ] }
 ];
 
-const indices = [ 0, 1, 2 ];
-
-// Try reversing the order:
-// indices.reverse()`}
+const indices = [0, 1, 2];
+// Try reversing the winding order:
+// indices.reverse();`}
     />
   );
 };
@@ -347,13 +323,12 @@ export const Geometry = props => {
   { position: [ -0.5, -0.5, 0 ] },
   { position: [ -0.5, 0.5, 0 ] },
   { position: [ 0.5, 0.5, 0 ] },
-  { position: [ 0.5, -0.5, 0 ] },
+  { position: [ 0.5, -0.5, 0 ] }
 ];
 
-const indices = [ 0, 1, 2, 2, 3, 0 ];
-
-// Try reversing the order:
-// indices.reverse()`}
+const indices = [0, 1, 2, 2, 3, 0];
+// Try reversing the winding order:
+// indices.reverse();`}
     />
   );
 };
@@ -362,24 +337,14 @@ export const THREEVectorAndColor = props => {
   return (
     <VerticesComponent
       code={`const color = new THREE.Color('green');
-
-// Setting by Hue, Sat, Lightness
-// color.setHSL(0.5, 0.5, 0.5);
+// Set the color by hue, saturation, and lightness:
+// color.setHSL(0.3, 0.8, 0.4);
 
 const position = new THREE.Vector3(0.25, 0.25, 0);
+// position.setScalar(0.25);
+// position.fromArray([0.25, 0.25, 0]);
 
-// Set one component
-// position.x = 0;
-
-// Set all 3 components to the same value
-// position.setScalar(0.5);
-
-// Copy another vector
-// position.copy(new THREE.Vector3(1, 0, 0));
-
-// From/to Array
-// position.fromArray([ 0, 1, 0 ]);
-// const array = position.toArray();`}
+const vertices = [{ position, color }];`}
     />
   );
 };
@@ -388,10 +353,9 @@ export const Vertices = props => {
   return (
     <VerticesComponent
       {...props}
-      code={`const V0 = {
-  position: [ 0, 0, 0.5 ],
-  color: 'blue'
-};`}
+      code={`const vertices = [
+  { position: [0, 0, 0.5], color: 'blue' }
+];`}
     />
   );
 };
@@ -404,13 +368,7 @@ export const Indices = props => {
   { position: [ -0.5, -0.5, 0 ] },
   { position: [ -0.5, 0.5, 0 ] },
   { position: [ 0.5, 0.5, 0 ] }
-];
-
-// Uncomment the below to create connections
-// const indices = [ 0, 1, 2 ];
-
-// Then, try reversing the order:
-// indices.reverse()`}
+];`}
     />
   );
 };

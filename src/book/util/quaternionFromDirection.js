@@ -1,7 +1,9 @@
+import * as THREE from "three";
+
 const axis = new THREE.Vector3();
 
-module.exports = setDirection;
-function setDirection (dir, quaternion = new THREE.Quaternion()) {
+// Modern ES Default Export instead of module.exports
+export default function setDirection(dir, quaternion = new THREE.Quaternion()) {
   // dir is assumed to be normalized
   if (dir.y > 0.99999) {
     quaternion.set(0, 0, 0, 1);

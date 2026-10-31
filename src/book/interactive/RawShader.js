@@ -1,31 +1,36 @@
 /** @jsx h */
-const { h } = require('preact');
-const Random = require('canvas-sketch-util/random');
-const { linspace, lerp } = require('canvas-sketch-util/math');
-const InteractiveComponent = require('./InteractiveComponent');
-const createCartesianGrid = require('./createCartesianGrid');
-const UI = require('../util/UI');
+import * as THREE from 'three';
+import { h } from 'preact';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import Random from 'canvas-sketch-util/random';
+import { linspace, lerp } from 'canvas-sketch-util/math';
+import InteractiveComponent from './InteractiveComponent';
+import createCartesianGrid from './createCartesianGrid';
+import UI from '../util/UI';
+import { executeSafeJavaScript, safeMath, safeThree } from './safeJavaScript';
 
 const settings = {
   animate: true,
-  context: 'webgl',
+  context: 'webgl2',
   attributes: { antialias: true }
 };
 
+/**
+ * Resolve GLSL input or a Three.js material created in restricted JavaScript.
+ *
+ * @param {string} code User-entered GLSL or JavaScript material code.
+ * @param {Record<string, unknown>} params Shader editor mode.
+ * @returns {{ code: string } | { material: THREE.ShaderMaterial | THREE.RawShaderMaterial }}
+ *   Parsed shader data.
+ */
 const evaluate = (code, params) => {
-  /* eslint no-eval: 0 */
-  return eval([
-    `;(function () {`,
-    params.material
-      ? code
-      : ('const code = `' + code + '`;'),
-    ';',
-    params.material
-      ? `if (typeof material === 'undefined') throw new Error('Must specify a "material" variable');
-        return { material };`
-      : `return { code };`,
-    '})();'
-  ].join('\n'));
+  if (!params.material) return { code };
+
+  const { material } = executeSafeJavaScript(code, { THREE: safeThree, Math: safeMath });
+  if (!(material instanceof THREE.ShaderMaterial) && !(material instanceof THREE.RawShaderMaterial)) {
+    throw new Error("You need to define a Three.js ShaderMaterial or RawShaderMaterial");
+  }
+  return { material };
 }
 
 const sketch = (props) => {
@@ -37,6 +42,16 @@ const sketch = (props) => {
   renderer.setClearColor('#fff', 1);
   renderer.sortObjects = false;
   renderer.debug.checkShaderErrors = true;
+  let shaderCompileError = null;
+  renderer.debug.onShaderError = (gl, program, vertexShader, fragmentShader) => {
+    const shaders = [vertexShader, fragmentShader];
+    const failedShader = shaders.find(shader => shader && !gl.getShaderParameter(shader, gl.COMPILE_STATUS));
+    const log = failedShader
+      ? gl.getShaderInfoLog(failedShader)
+      : gl.getProgramInfoLog(program);
+    const source = failedShader ? gl.getShaderSource(failedShader) : '';
+    shaderCompileError = new Error(getShaderError(log || 'Shader program failed to link', source));
+  };
 
   let camera, controls;
   if (geometryType === 'fullscreen') {
@@ -47,7 +62,7 @@ const sketch = (props) => {
     else camera.position.set(2, 2, 2);
     camera.lookAt(new THREE.Vector3());
 
-    controls = new THREE.OrbitControls(camera, canvas);
+    controls = new OrbitControls(camera, canvas);
     controls.enableZoom = false;
     controls.enablePan = false;
     controls.enableDamping = true;
@@ -69,6 +84,7 @@ const sketch = (props) => {
     geometry = new THREE.SphereGeometry(1, 16, 8);
   }
   const material = new THREE.RawShaderMaterial({
+    glslVersion: THREE.GLSL3,
     uniforms: {
       resolution: { value: new THREE.Vector2() },
       stretch: { value: 1 },
@@ -80,17 +96,18 @@ const sketch = (props) => {
     transparent: true,
     fragmentShader: `
       precision highp float;
+      out vec4 fragColor;
       void main () {
-        gl_FragColor = vec4(vec3(0.0), 1.0);
+        fragColor = vec4(vec3(0.0), 1.0);
       }
     `,
     vertexShader: `
       precision highp float;
-      attribute vec3 position;
-      attribute vec2 uv;
+      in vec3 position;
+      in vec2 uv;
       uniform mat4 projectionMatrix;
       uniform mat4 modelViewMatrix;
-      varying vec2 vUv;
+      out vec2 vUv;
       void main () {
         vUv = uv;
         vec3 transformed = position.xyz;
@@ -132,14 +149,13 @@ const sketch = (props) => {
 
   const result = {
     onCodeUpdate (props) {
-      const { evaluateResult, params } = props.data || {};
+      const { evaluateResult } = props.data || {};
       this.compileError = null;
       let newMaterial;
       if (!isMaterialMode && evaluateResult && evaluateResult.code) {
         newMaterial = material.clone();
         if (vertex) newMaterial.vertexShader = evaluateResult.code.trim();
         else newMaterial.fragmentShader = evaluateResult.code.trim();
-        mesh.material = newMaterial;
       } else if (isMaterialMode && evaluateResult && evaluateResult.material) {
         newMaterial = evaluateResult.material;
       }
@@ -148,36 +164,17 @@ const sketch = (props) => {
         const oldMaterial = mesh.material;
         mesh.material = newMaterial;
         newMaterial.needsUpdate = true;
-        if (newMaterial.program) {
-          newMaterial.program.diagnostics = undefined;
-        }
-  
+        shaderCompileError = null;
         this.render(props);
-        if (newMaterial.program.diagnostics && !newMaterial.program.diagnostics.runnable) {
-          const { vertexShader, fragmentShader } = newMaterial.program.diagnostics;
-          let log = `Error compiling shader - see DevTools for details`;
-          let shader;
-          if (vertexShader && vertexShader.log) {
-            shader = renderer.getContext().getShaderSource(newMaterial.program.vertexShader);
-            // shader = vertexShader.prefix + newMaterial.vertexShader;
-            log = vertexShader.log;
-          } else if (fragmentShader && fragmentShader.log) {
-            // shader = fragmentShader.prefix + newMaterial.fragmentShader;
-            shader = renderer.getContext().getShaderSource(newMaterial.program.fragmentShader);
-            log = fragmentShader.log;
-          }
-  
-          const errMessage = getShaderError(log, shader);
+        if (shaderCompileError) {
           mesh.material = oldMaterial;
-          this.compileError = new Error(errMessage);
+          this.compileError = shaderCompileError;
+          if (newMaterial !== oldMaterial) newMaterial.dispose();
         } else {
-          // program success, dispose old material
-          if (oldMaterial && oldMaterial !== mesh.material) {
+          if (oldMaterial && oldMaterial !== newMaterial) {
             oldMaterial.dispose();
           }
         }
-      } else if (isMaterialMode) {
-        // mesh.material.visible = false;
       }
     },
     resize (props) {
@@ -190,7 +187,7 @@ const sketch = (props) => {
     },
     render (props) {
       const { data = {} } = props;
-      const { evaluateResult, params } = data;
+      const { params } = data;
       const { stretch, opacity, color } = params;
 
       if (!isMaterialMode) {
@@ -213,30 +210,46 @@ const sketch = (props) => {
   result.onCodeUpdate(props);
   return result;
 }
+class ParamsConfig {
+  constructor(props) {
+    const { vertex = false, material = false, geometryType = 'sphere' } = props;
+    this.vertex = vertex;
+    this.material = material;
+    this.geometryType = geometryType;
+    
+    // Set initial instance values
+    this.stretch = Math.PI;
+    this.color = vertex ? 'black' : 'pink';
+    this.opacity = 1;
+  }
 
-module.exports = (props = {}) => {
-  const { vertex = false, material = false, geometryType = 'sphere' } = props;
-  const params = {
-    vertex,
-    material,
-    geometryType,
-    @UI.Slider({ variable: true, visible: vertex && !material, label: 'stretch', min: 0, max: Math.PI, step: 0.01 })
-    stretch: Math.PI,
-    @UI.Color({ variable: true, visible: !vertex && !material, label: 'color' })
-    color: vertex ? 'black' : 'pink',
-    @UI.Slider({ variable: true, visible: !vertex && !material, label: 'opacity', min: 0, max: 1, step: 0.01 })
-    opacity: 1
-  };
-  return <InteractiveComponent
-    sketch={sketch}
-    settings={settings}
-    code={props.code}
-    evaluate={evaluate}
-    params={params}
-    showCode
-    showParams={!material && geometryType !== 'fullscreen'}
-    glsl={!material}
-    showCanvas
-    size='full'
-  />;
+  @UI.Slider({ variable: true, visible: function() { return this.vertex && !this.material; }, label: 'stretch', min: 0, max: Math.PI, step: 0.01 })
+  stretch;
+
+  @UI.Color({ variable: true, visible: function() { return !this.vertex && !this.material; }, label: 'color' })
+  color;
+
+  @UI.Slider({ variable: true, visible: function() { return !this.vertex && !this.material; }, label: 'opacity', min: 0, max: 1, step: 0.01 })
+  opacity;
+}
+
+export default (props = {}) => {
+  const { material = false, geometryType = 'sphere' } = props;
+  const params = new ParamsConfig(props);
+
+  return (
+    <InteractiveComponent
+      sketch={sketch}
+      settings={settings}
+      code={props.code}
+      evaluate={evaluate}
+      evaluateOnParamsChange={false}
+      params={params}
+      showCode
+      showParams={!material && geometryType !== 'fullscreen'}
+      glsl={!material}
+      showCanvas
+      size='full'
+    />
+  );
 };

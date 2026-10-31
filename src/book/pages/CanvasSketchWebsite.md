@@ -1,8 +1,7 @@
-export const metadata = {
-  title: 'canvas-sketch Website'
-};
-
-# `canvas-sketch` — Website
+---
+title: "canvas-sketch Website"
+heading: "canvas-sketch — Website"
+---
 
 If you'd like to publish your artwork or interactive piece onto the web, here's how you can do it.
 

@@ -1,12 +1,13 @@
-const createLine3D = require('../util/createLine3D');
-const MathUtil = require('canvas-sketch-util/math');
-const THREEDOMText = require('../util/THREEDOMText');
-const defined = require('defined');
-const THREECanvasText = require('../util/THREECanvasText');
-const quaternionFromDirection = require('../util/quaternionFromDirection');
+import * as THREE from 'three';
+import createLine3D from '../util/createLine3D';
+import MathUtil from 'canvas-sketch-util/math';
+import THREEDOMText from '../util/THREEDOMText';
+import defined from 'defined';
+import THREECanvasText from '../util/THREECanvasText';
+import quaternionFromDirection from '../util/quaternionFromDirection';
 
-module.exports = createCartesianGrid;
-function createCartesianGrid (props = {}) {
+// Modern ES Default Export replacing module.exports
+export default function createCartesianGrid (props = {}) {
   const { context, showText = true, showSubdivisions = true } = props;
 
   const renderer = new THREE.WebGLRenderer({ context });
@@ -14,18 +15,9 @@ function createCartesianGrid (props = {}) {
   renderer.sortObjects = false;
 
   const camera = new THREE.OrthographicCamera(-1, 1, -1, 1, -100, 100);
-  // const controls = new THREE.OrbitControls(camera, context.canvas);
   camera.rotation.order = 'YXZ';
 
   const scene = new THREE.Scene();
-
-  // const geometry = new THREE.BoxGeometry(1, 1, 1);
-  // const axis = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
-  //   color: 'black',
-  //   wireframe: true
-  // }));
-  // axis.scale.setScalar(1);
-  // scene.add(axis);
 
   const { dimensions = 3 } = props;
   let axesData = [
@@ -54,9 +46,6 @@ function createCartesianGrid (props = {}) {
   const gridGroup = new THREE.Group();
   group.add(gridGroup);
 
-  // const thickCylinderGeometry = new THREE.CylinderGeometry(gridLineWidth, gridLineWidth, 2, 8, 1);
-  // const thinCylinderGeometry = new THREE.CylinderGeometry(gridLineWidth * 0.25, gridLineWidth, 2, 8, 1);
-
   const visibleSubdivisions = props.visibleSubdivisions;
   const lines = axesData.map(({ target, normal, tangent, midpoint = true }) => {
     return MathUtil.linspace(gridSubdivisions, true).map((t, i) => {
@@ -82,8 +71,6 @@ function createCartesianGrid (props = {}) {
         const totalLength = length + textPadding;
         const point = new THREE.Vector3().addScaledVector(normal, totalLength * dir);
       
-        // const node = THREECanvasText(camera);
-        // gridGroup.add(node.mesh);
         const node = THREEDOMText(context.canvas, camera);
         context.canvas.parentElement.appendChild(node.element);
         const object = cellMesh.clone();
@@ -106,20 +93,6 @@ function createCartesianGrid (props = {}) {
       line.axis = target;
       line.textNodes = textNodes;
       return line;
-      // const cylinder = new THREE.Mesh(
-      //   isMidpoint ? thickCylinderGeometry : thinCylinderGeometry,
-      //   new THREE.MeshBasicMaterial({
-      //     transparent: true,
-      //     color: isMidpoint ? 'tomato' : 'hsl(0, 0%, 85%)',
-      //   })
-      // );
-      // quaternionFromDirection(normal, cylinder.quaternion);
-      // cylinder.position.addScaledVector(tangent, u);
-
-      // return {
-      //   object: cylinder,
-      //   textNodes
-      // };
     });
   }).reduce((a, b) => a.concat(b), [])
     .filter(Boolean);
@@ -184,7 +157,6 @@ function createCartesianGrid (props = {}) {
       });
     },
     unload () {
-      // controls.dispose();
       renderer.dispose();
     }
   };

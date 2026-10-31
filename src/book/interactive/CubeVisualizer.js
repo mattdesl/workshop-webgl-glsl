@@ -1,47 +1,45 @@
 /** @jsx h */
-const { h } = require('preact');
-const defined = require('defined');
-const Random = require('canvas-sketch-util/random');
-const Color = require('canvas-sketch-util/color');
-const { linspace, lerp } = require('canvas-sketch-util/math');
-const InteractiveComponent = require('./InteractiveComponent');
-const createCartesianGrid = require('./createCartesianGrid');
-const UI = require('../util/UI');
-const createLine3D = require('../util/createLine3D');
-const { addBarycentricCoordinates, unindexBufferGeometry } = require('../util/wireGeomUtil');
-const chromotome = require('chromotome');
+import { h } from 'preact';
+import * as THREE from 'three';
+import defined from 'defined';
+import Random from 'canvas-sketch-util/random';
+import InteractiveComponent from './InteractiveComponent';
+import createCartesianGrid from './createCartesianGrid';
+import UI from '../util/UI';
+import { safeMath, safeThree, executeSafeJavaScript } from './safeJavaScript';
+// import * as chromotome from 'chromotome';
+import { getAll } from 'chromotome';
 
 const settings = {
   animate: false,
-  context: 'webgl',
+  context: 'webgl2',
   attributes: { antialias: true }
 };
 
+/**
+ * Apply the editor's JavaScript to the transform object and current controls.
+ *
+ * @param {string} code User-provided JavaScript statements.
+ * @param {Record<string, unknown>} params Current X, Y, Z and scale values.
+ * @returns {THREE.Object3D} Object carrying the requested transform.
+ */
 const evaluate = (code, params) => {
-  /* eslint no-eval: 0 */
-  const str = [
-    `;(function (params) {`,
-    `const { X, Y, Z } = params;`,
-    `const mesh = new window.THREE.Object3D();
-    mesh.scale.setScalar(params.defaultScale);
-    `,
-    code,
-    ';',
-    `return mesh;`,
-    `})(${JSON.stringify({
-      X: params.X,
-      Y: params.Y,
-      Z: params.Z,
-      defaultScale: params.defaultScale
-    })})`
-  ].join('\n');
-  return eval(str);
+  const mesh = new THREE.Object3D();
+  mesh.scale.setScalar(params.defaultScale);
+  executeSafeJavaScript(code, {
+    THREE: safeThree,
+    Math: safeMath,
+    mesh,
+    X: params.X,
+    Y: params.Y,
+    Z: params.Z,
+  });
+  return mesh;
 };
 
 const sketch = (props) => {
   const { context } = props;
   const { params } = props.data || {};
-  const { fill } = params;
 
   const grid = createCartesianGrid({
     ...props,
@@ -49,7 +47,11 @@ const sketch = (props) => {
   });
 
   const box = new THREE.BoxGeometry(1, 1, 1);
-  const palettes = chromotome.getAll()
+  
+  // Safely extract from either namespace bundle hook or normalized internal standard properties
+  // const chromotomeLib = chromotome.default || chromotome;
+  // const palettes = chromotomeLib.getAll()
+  const palettes = getAll()
       .filter(c => c.colors.length >= 6)
       .map(c => c.colors);
 
@@ -73,16 +75,17 @@ const sketch = (props) => {
   context.canvas.addEventListener('click', recolor);
 
   return {
-    reset () {
+    reset() {
       recolor();
     },
-    unload () {
+    unload() {
       context.canvas.removeEventListener('click', recolor);
+      grid.unload(props);
     },
-    resize (props) {
+    resize(props) {
       grid.resize(props);
     },
-    render (props) {
+    render(props) {
       const { params, evaluateResult } = props.data || {};
       const { rotation, perspective = 1 } = params;
 
@@ -90,7 +93,7 @@ const sketch = (props) => {
         mesh.matrixAutoUpdate = false;
         evaluateResult.updateMatrix();
         mesh.matrix.identity();
-        mesh.applyMatrix(evaluateResult.matrix);
+        mesh.applyMatrix4(evaluateResult.matrix);
         mesh.updateMatrixWorld(true);
         mesh.matrixAutoUpdate = true;
       }
@@ -100,43 +103,51 @@ const sketch = (props) => {
         ...props,
         perspective
       });
-    },
-    unload (props) {
-      grid.unload(props);
     }
   };
+};
+
+class ParamsConfig {
+  constructor(props) {
+    const { defaultScale = 0.25, extent = 1, defaultValue = 0 } = props;
+
+    this.minExtent = defined(props.minExtent, -extent, -1);
+    this.maxExtent = defined(props.maxExtent, extent, 1);
+    
+    this.rotation = 0;
+    this.defaultScale = defaultScale;
+    this.X = defaultValue;
+    this.Y = defaultValue;
+    this.Z = defaultValue;
+  }
+
+  @UI.Slider({ visible: false, min: -1, max: 1, step: 0.01 })
+  rotation;
+
+  @UI.Slider({ variable: true, min: function() { return this.minExtent; }, max: function() { return this.maxExtent; }, step: 0.01 })
+  X;
+
+  @UI.Slider({ variable: true, min: function() { return this.minExtent; }, max: function() { return this.maxExtent; }, step: 0.01 })
+  Y;
+
+  @UI.Slider({ variable: true, min: function() { return this.minExtent; }, max: function() { return this.maxExtent; }, step: 0.01 })
+  Z;
 }
 
-module.exports = (props) => {
-  const {
-    defaultScale = 0.25,
-    extent = 1,
-    defaultValue = 0
-  } = props;
+export default (props) => {
+  const params = new ParamsConfig(props);
 
-  const minExtent = defined(props.minExtent, -extent, -1);
-  const maxExtent = defined(props.maxExtent, extent, 1);
-
-  const params = {
-    @UI.Slider({ visible: false, min: -1, max: 1, step: 0.01 })
-    rotation: 0,
-    defaultScale,
-    @UI.Slider({ variable: true, min: minExtent, max: maxExtent, step: 0.01 })
-    X: defaultValue,
-    @UI.Slider({ variable: true, min: minExtent, max: maxExtent, step: 0.01 })
-    Y: defaultValue,
-    @UI.Slider({ variable: true, min: minExtent, max: maxExtent, step: 0.01 })
-    Z: defaultValue
-  };
-  return <InteractiveComponent
-    sketch={sketch}
-    settings={settings}
-    code={props.code}
-    evaluate={evaluate}
-    params={params}
-    showParams
-    showCode
-    showCanvas
-    size='small'
-  />;
+  return (
+    <InteractiveComponent
+      sketch={sketch}
+      settings={settings}
+      code={props.code}
+      evaluate={evaluate}
+      params={params}
+      showParams
+      showCode
+      showCanvas
+      size="small"
+    />
+  );
 };

@@ -1,139 +1,136 @@
-#### <sup>:closed_book: [workshop-webgl-glsl](../README.md) → Code Snippets</sup>
+# Shader snippets
 
----
+These examples use GLSL ES 3.00 for WebGL 2. The Three.js materials set
+`glslVersion: THREE.GLSL3`. Three.js adds the version directive to shader
+strings, so these strings omit `#version 300 es`.
 
-# Code Snippets
+## Basic fragment shader
 
-A few snippets that we may use during the workshop.
-
-## GLSL — Baisc Vertex Shader
-
-This is a "pass-through" vertex shader that just passes down some varyings:
+A fragment shader receives the interpolated texture coordinate `vUv` and
+writes one color per pixel:
 
 ```glsl
-varying vec3 vNormal;
-varying vec2 vUv;
-varying vec3 vPosition;
+precision highp float;
 
-void main () {
-  vPosition = position;
+uniform float uTime;
+in vec2 vUv;
+out vec4 fragColor;
+
+void main() {
+  vec3 color = 0.5 + 0.5 * cos(
+    uTime + vUv.xyx + vec3(0.0, 2.0, 4.0)
+  );
+  fragColor = vec4(color, 1.0);
+}
+```
+
+The vertex shader sends a matching output to the fragment shader:
+
+```glsl
+out vec2 vUv;
+
+void main() {
   vUv = uv;
-  vNormal = normal;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position.xyz, 1.0);
+  gl_Position = projectionMatrix * modelViewMatrix *
+    vec4(position, 1.0);
 }
 ```
 
-## GLSL — Basic Fragment Shader
+Three.js provides the built-in attributes and transform uniforms in these
+shader strings.
 
-If you're using a Vertex Shader similar to the above, you can then accept `vUv` and other varyings in the fragment shader.
+## Supply a uniform from JavaScript
 
-```js
-varying vec2 vUv;
-
-void main () {
-  vec3 fragColor = vec3(vUv.x);
-  gl_FragColor = vec4(fragColor, 1.0);
-}
-```
-
-## GLSL in Three.js
-
-You can write your programs with template strings like so:
+Pass a starting value in the material's `uniforms` object. Update the
+`value` property as your animation runs:
 
 ```js
-const vertexShader = /* glsl */ `
-  void main () {
-    // ...
-  }
-`;
-
-const fragmentShader = /* glsl */ `
-  void main () {
-    // ...
-  }
-`;
-
 const material = new THREE.ShaderMaterial({
+  glslVersion: THREE.GLSL3,
   uniforms: {
-    // your unifroms
+    uTime: { value: 0 }
   },
   vertexShader,
   fragmentShader
 });
+
+material.uniforms.uTime.value = elapsedSeconds;
 ```
 
-> :bulb: I'm using [Comment tagged templates](https://marketplace.visualstudio.com/items?itemName=bierner.comment-tagged-templates) and [Shader languages support](https://marketplace.visualstudio.com/items?itemName=slevesque.shader) extensions in VSCode for inline highlighting.
+The application must import Three.js and provide the `vertexShader`,
+`fragmentShader`, and `elapsedSeconds` values.
 
-## GLSL — Rim Light Shader
+## Smooth circular mask
 
-Here's how we can create rim lighting on a sphere geometry. This goes in the Fragment shader, and expects `vPosition` which is a varying of the position attribute:
+`smoothstep` makes a soft transition around a radius. This fragment shader
+centers and scales coordinates so the circle stays round on a non-square
+canvas:
 
 ```glsl
-uniform mat4 modelMatrix;
+precision highp float;
 
-float sphereRim (vec3 spherePosition) {
-  vec3 normal = normalize(spherePosition.xyz);
-  vec3 worldNormal = normalize(mat3(modelMatrix) * normal.xyz);
-  vec3 worldPosition = (modelMatrix * vec4(spherePosition, 1.0)).xyz;
-  vec3 V = normalize(cameraPosition - worldPosition);
-  float rim = 1.0 - max(dot(V, worldNormal), 0.0);
-  return pow(smoothstep(0.0, 1.0, rim), 0.5);
+uniform vec2 resolution;
+in vec2 vUv;
+out vec4 fragColor;
+
+void main() {
+  vec2 point = (vUv - 0.5) * resolution;
+  float radius = min(resolution.x, resolution.y) * 0.25;
+  float circle = 1.0 - smoothstep(
+    radius,
+    radius + 1.0,
+    length(point)
+  );
+  fragColor = vec4(vec3(circle), 1.0);
 }
 ```
 
-In your rendering:
-
-```glsl
-void main () {
-  ...
-
-  // a value between 0..1
-  float rim = sphereRim(vPosition);
-
-  ...
-}
-```
-
-## GLSL — Anti-aliased Step Function
-
-First, make sure your shader has standard derivatives extension enabled:
+Pass the drawing buffer dimensions in the `resolution` uniform:
 
 ```js
-const material = new THREE.ShaderMaterial({
-  ...
-  extensions: {
-    derivatives: true
-  },
-  ...
-})
-```
-
-Then, install `glsl-aastep` and include the following:
-
-```glsl
-#pragma glslify: aastep = require('glsl-aastep')
-
-void main () {
-  ...
-
-  // Some distance value, e.g. distance from point
-  float distance = /* some value */;
-
-  // Some threshold, e.g. size of circle you want to step to
-  float threshold = 0.25;
-
-  // Perform an anti-alias step, returns a value between 0..1
-  float edge = aastep(threshold, distance);
-  ...
+uniforms: {
+  resolution: {
+    value: new THREE.Vector2(width, height)
+  }
 }
 ```
 
-This is basically the following step function, but the edge is smoothed perfectly with anti-aliasing rather than a jagged/stepped edge:
+## Rim lighting
 
+This pair of shaders calculates a simple view-dependent rim. The vertex
+shader sends a view-space normal and position to the fragment shader:
+
+```glsl
+out vec3 vNormal;
+out vec3 vViewPosition;
+
+void main() {
+  vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
+  vNormal = normalize(normalMatrix * normal);
+  vViewPosition = -viewPosition.xyz;
+  gl_Position = projectionMatrix * viewPosition;
+}
 ```
-threshold < distance ? 0.0 : 1.0
+
+The fragment shader receives those values with matching `in` declarations:
+
+```glsl
+precision highp float;
+
+in vec3 vNormal;
+in vec3 vViewPosition;
+out vec4 fragColor;
+
+void main() {
+  vec3 normal = normalize(vNormal);
+  vec3 viewDirection = normalize(vViewPosition);
+  float rim = 1.0 - max(dot(normal, viewDirection), 0.0);
+  rim = smoothstep(0.2, 0.8, rim);
+  fragColor = vec4(vec3(rim), 1.0);
+}
 ```
 
-## 
+See [GLSL syntax](glsl-syntax.md) for types and shader inputs. For shader
+imports in this repository, see
+[JavaScript and shader modules](modules.md).
 
-#### <sup>[← Back to README](../README.md)

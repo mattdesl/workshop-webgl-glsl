@@ -1,9 +1,7 @@
-import ThreeGeomMat from '../interactive/ThreeGeomMat';
-
-export const metadata = {
-  demo: () => <ThreeGeomMat material={false} />,
-  title: 'THREE.Geometry'
-};
+---
+title: "THREE.Geometry"
+demo: threejs-geometry
+---
 
 ThreeJS uses a [THREE.Geometry](https://threejs.org/docs/#api/en/core/Geometry) class to hold `vertices` (vertex positions) and `faces` (i.e. indices).
 

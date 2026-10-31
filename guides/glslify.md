@@ -1,86 +1,56 @@
-#### <sup>:closed_book: [workshop-webgl-glsl](../README.md) → Intro to `glslify`</sup>
+# glslify
 
----
+[glslify](https://github.com/glslify/glslify) is a module system and
+preprocessor for composing GLSL files. It can resolve shader modules from
+npm packages and combine them at build time.
 
-# Intro to `glslify`
+glslify is optional. Installing a GLSL package alone does not make its
+`#pragma glslify` directives work: a glslify transform must process the shader.
 
-Built into `canvas-sketch` is a tool called [glslify](https://www.npmjs.com/package/glslify) that can enable importing GLSL snippets from npm.
+## Use glslify from its CLI
 
-To use it, you have to replace your template strings with `glslify(shaderStr)` function calls like so:
+In a separate shader project, install the preprocessor and a shader module:
 
-```js
-// Require glslify at the top of your file
-const glslify = require('glslify');
-
-// Wrap template strings with the function
-const vertexShader = glslify(`
-  void main () {
-    // ... usual shader code
-  }
-`);
+```sh
+npm install --save-dev glslify glsl-noise
 ```
 
-Now, you can `npm install` a GLSL module such as:
-
-- [glsl-noise](https://www.npmjs.com/package/glsl-noise)
-- [glsl-random](https://www.npmjs.com/package/glsl-random)
-- [glsl-dither](https://www.npmjs.com/package/glsl-dither)
-
-You use the `#pragma` syntax to import modules, like so:
+For example, save this as `src/shaders/fragment.glsl`:
 
 ```glsl
-#pragma glslify: noise = require('glsl-noise/simplex/3d');
-#pragma glslify: random = require('glsl-random');
-#pragma glslify: myUtil = require('./path/to/my-function.glsl');
-```
+#pragma glslify: snoise = require(glsl-noise/simplex/2d)
 
-Here's how it looks in a shader:
+precision highp float;
 
-```js
-// Wrap template strings with the function
-const vertexShader = glslify(`
-  #pragma glslify: noise = require('glsl-noise/simplex/3d');
+varying vec2 vUv;
 
-  void main () {
-    float n = noise(position.xyz);
-    // do something with n...
-  }
-`);
-```
-
-You can also move your shader to a new file, like `.glsl`, `.vert` or `.frag`, and require it like so in JavaScript:
-
-```js
-// glslify still works here
-const myShader = require('./someShader.glsl');
-```
-
-## Modules
-
-You can make your own modules like so. First create the module and export a single function from it:
-
-`red.glsl`
-
-```glsl
-vec3 red () {
-  return vec3(1.0, 0.0, 0.0);
-}
-
-#pragma glslify: export(red);
-```
-
-Now you can import the file from another shader:
-
-`main.glsl`
-
-```glsl
-#pragma glslify: red = require('./red.glsl');
-
-void main () {
-  vec3 r = red(); // should be (1,0,0)
+void main() {
+  float noise = snoise(vUv);
+  gl_FragColor = vec4(vec3(noise * 0.5 + 0.5), 1.0);
 }
 ```
 
-## 
+Compile the source into a file your app can load:
 
-#### <sup>[← Back to README](../README.md)
+```sh
+npx glslify src/shaders/fragment.glsl -o src/shaders/fragment.bundle.glsl
+```
+
+The generated file contains the imported code. See the
+[glslify documentation](https://github.com/glslify/glslify) for its API,
+CLI, and examples.
+
+## This workshop's Vite setup
+
+The project uses `vite-plugin-glsl` to import shader files. Its default
+`importKeywords` setting handles `#include` directives. That syntax is
+different from glslify's `#pragma glslify` syntax.
+
+The current `vite.config.js` does not configure a glslify transform.
+Therefore, glslify pragmas in a shader are not resolved automatically. To use
+glslify modules here, add a build step or configure a compatible transform,
+then import the generated shader. See the
+[vite-plugin-glsl documentation][vite-plugin-glsl] for the syntax supported
+by this project's Vite plugin.
+
+[vite-plugin-glsl]: https://github.com/UstymUkhman/vite-plugin-glsl

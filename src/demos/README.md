@@ -3,8 +3,8 @@
 To run the demos, you can clone this repo and install its dependencies:
 
 ```sh
-cd workshop-webgl-glsl
-npm install
+cd workshop-webgl2-glsl-es-3.00
+npm i
 ```
 
 Then, run one of the demos with `canvas-sketch-cli`, e.g.

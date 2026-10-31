@@ -1,7 +1,8 @@
-const CanvasText = require('./CanvasText');
-const CameraProjector = require('./CameraProjector');
+import * as THREE from "three";
+import CanvasText from "./CanvasText";
+import CameraProjector from "./CameraProjector";
 
-module.exports = (camera) => {
+export default (camera) => {
   const projector = CameraProjector(camera);
   const text = CanvasText();
   const texture = new THREE.Texture(text.canvas);
@@ -14,25 +15,16 @@ module.exports = (camera) => {
 
   const geometry = new THREE.PlaneGeometry(1, 1);
   const material = new THREE.ShaderMaterial({
+    glslVersion: THREE.GLSL3,
     vertexShader: `
       uniform float aspect;
-      varying vec2 vUv;
+      out vec2 vUv;
       void main () {
         vec2 scale = vec2(
           length(modelViewMatrix[0]) / aspect,
           length(modelViewMatrix[1])
         );
       
-        // vec4 billboard = (modelViewMatrix * vec4(vec3(0.0), 1.0));
-        // vec4 newPosition = projectionMatrix
-        //   * billboard
-        //   + vec4(scale * position.xy, 0.0, 0.0);
-        
-        // vec3 worldPos = (modelMatrix * vec4(vec3(0.0), 1.0)).xyz;
-        // gl_Position = projectionMatrix * 
-        //       (modelViewMatrix * vec4(worldPos, 1) +
-        //        vec4(position.xy * scale, 0, 0));
-
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position.xyz, 1.0);
         vUv = uv;
       }
@@ -41,18 +33,18 @@ module.exports = (camera) => {
       uniform vec3 color;
       uniform float opacity;
       uniform sampler2D map;
-      varying vec2 vUv;
+      in vec2 vUv;
+      out vec4 fragColor;
 
       void main () {
-        gl_FragColor = texture2D(map, vUv) * vec4(color, opacity);
-        // gl_FragColor.rgba = vec4(vec3(0.0), 1.0);
+        fragColor = texture(map, vUv) * vec4(color, opacity);
       }
     `,
     uniforms: {
       aspect: { value: 1 },
       opacity: { value: 1 },
-      color: { value: new THREE.Color('white') },
-      map: { value: texture, type: 't' }
+      color: { value: new THREE.Color("white") },
+      map: { value: texture },
     },
     transparent: true,
     blending: THREE.CustomBlending,
@@ -61,12 +53,9 @@ module.exports = (camera) => {
     blendDst: THREE.OneMinusSrcAlphaFactor,
     blendSrcAlpha: THREE.OneFactor,
     blendDstAlpha: THREE.OneMinusSrcAlphaFactor,
-    side: THREE.DoubleSide
+    side: THREE.DoubleSide,
   });
-  const mesh = new THREE.Mesh(
-    geometry,
-    material
-  );
+  const mesh = new THREE.Mesh(geometry, material);
   const box = new THREE.Box3();
   return {
     geometry,
@@ -74,12 +63,8 @@ module.exports = (camera) => {
     mesh,
     texture,
     canvas: text.canvas,
-    update (props = {}) {
-      const {
-        object,
-        fontSize = 1,
-        scale = 1
-      } = props;
+    update(props = {}) {
+      const { object, fontSize = 1, scale = 1 } = props;
       projector.update(props);
       object.updateMatrixWorld();
       box.setFromObject(object);
@@ -95,12 +80,12 @@ module.exports = (camera) => {
         ...props,
         fontSize: canvasHeight * fontSize,
         width: canvasWidth,
-        height: canvasHeight
+        height: canvasHeight,
       });
 
       mesh.matrixAutoUpdate = false;
       mesh.matrix.identity();
-      mesh.applyMatrix(object.matrix);
+      mesh.applyMatrix4(object.matrix); // FIXED: Updated legacy .applyMatrix to .applyMatrix4 for modern Three.js stability
       mesh.quaternion.copy(camera.quaternion);
       mesh.matrixAutoUpdate = true;
       mesh.scale.multiplyScalar(scale);
@@ -110,6 +95,6 @@ module.exports = (camera) => {
       mesh.material.uniforms.opacity.value = props.opacity;
 
       texture.needsUpdate = true;
-    }
+    },
   };
-}
+};

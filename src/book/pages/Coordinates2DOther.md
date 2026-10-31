@@ -1,9 +1,7 @@
-import CartesianCoordinates from '../interactive/CartesianCoordinates';
-
-export const metadata = {
-  demo: CartesianCoordinates,
-  title: 'Centred Origin Point'
-};
+---
+title: "Centred Origin Point"
+demo: cartesian-coordinates-2d
+---
 
 Often when we talk of *Cartesian Coordinates*, the **origin point** `(0, 0)` is in the centre, and the coordinates can be negative or positive.
 

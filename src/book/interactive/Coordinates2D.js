@@ -1,14 +1,15 @@
 /** @jsx h */
-const { h } = require('preact');
-const Random = require('canvas-sketch-util/random');
-const InteractiveComponent = require('./InteractiveComponent');
-const { linspace, lerp } = require('canvas-sketch-util/math');
-const UI = require('../util/UI');
-const THREECanvasText = require('../util/THREECanvasText');
-const THREEDOMText = require('../util/THREEDOMText');
+import { h } from 'preact';
+import * as THREE from 'three';
+import Random from 'canvas-sketch-util/random';
+import InteractiveComponent from './InteractiveComponent';
+import { linspace, lerp } from 'canvas-sketch-util/math';
+import UI from '../util/UI';
+import THREECanvasText from '../util/THREECanvasText';
+import THREEDOMText from '../util/THREEDOMText';
 
 const settings = {
-  context: 'webgl',
+  context: 'webgl2',
   attributes: { antialias: true }
 };
 
@@ -51,11 +52,11 @@ const sketch = ({ context, data = {} }) => {
   context.canvas.parentElement.appendChild(text.element);
 
   return {
-    resize ({ pixelRatio, viewportWidth, viewportHeight }) {
+    resize({ pixelRatio, viewportWidth, viewportHeight }) {
       renderer.setPixelRatio(pixelRatio);
       renderer.setSize(viewportWidth, viewportHeight);
     },
-    render ({ time, width, height, data = {} }) {
+    render({ time, width, height, data = {} }) {
       const { x, y, zoom } = data.params;
 
       const aspect = width / height;
@@ -82,41 +83,51 @@ const sketch = ({ context, data = {} }) => {
         text: `(${x}, ${y})`,
       });
 
-      // text.mesh.position.copy(block.position);
-      // text.mesh.position.x += 0.5;
-      // text.mesh.position.y += 0.5;
-      // text.mesh.position.z += 1;
-
       renderer.render(scene, camera);
     },
-    unload () {
+    unload() {
       renderer.dispose();
     }
   };
+};
+
+// 1. Define the structural control parameters outside the component scope
+class ParamsConfig {
+  constructor() {
+    this.zoom = 3.5;
+    this.gridSize = 6;
+    this.x = 2;
+    this.y = 1;
+  }
+
+  // Rewrite the max function to check this instance's current gridSize value
+  @UI.Slider({
+    min: 0,
+    max: function() { return this.gridSize - 1; },
+    step: 1
+  })
+  x;
+
+  @UI.Slider({
+    min: 0,
+    max: function() { return this.gridSize - 1; },
+    step: 1
+  })
+  y;
 }
 
-module.exports = () => {
-  const control = {
-    min: 0,
-    max: ({ gridSize }) => (gridSize - 1),
-    step: 1
-  };
+// 2. Export the component and instantiate the configuration structure cleanly
+export default () => {
+  const params = new ParamsConfig();
 
-  const params = {
-    zoom: 3.5,
-    gridSize: 6,
-    @UI.Slider(control)
-    x: 2,
-    @UI.Slider(control)
-    y: 1
-  };
-
-  return <InteractiveComponent
-    sketch={sketch}
-    settings={settings}
-    params={params}
-    showParams
-    showCanvas
-    size='small'
-  />;
+  return (
+    <InteractiveComponent
+      sketch={sketch}
+      settings={settings}
+      params={params}
+      showParams
+      showCanvas
+      size="small"
+    />
+  );
 };

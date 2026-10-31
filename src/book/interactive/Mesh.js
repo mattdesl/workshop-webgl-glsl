@@ -1,32 +1,37 @@
 /** @jsx h */
-const { h } = require('preact');
-const Random = require('canvas-sketch-util/random');
-const { linspace, lerp } = require('canvas-sketch-util/math');
-const InteractiveComponent = require('./InteractiveComponent');
-const createCartesianGrid = require('./createCartesianGrid');
-const UI = require('../util/UI');
+import * as THREE from 'three';
+import { h } from 'preact';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import Random from 'canvas-sketch-util/random';
+import { linspace, lerp } from 'canvas-sketch-util/math';
+import InteractiveComponent from './InteractiveComponent';
+import createCartesianGrid from './createCartesianGrid';
+import UI from '../util/UI';
+import { executeSafeJavaScript, safeMath, safeThree } from './safeJavaScript';
 
 const settings = {
   animate: true,
-  context: 'webgl',
+  context: 'webgl2',
   attributes: { antialias: true }
 };
 
-const evaluate = (code, params) => {
-  /* eslint no-eval: 0 */
-  return eval([
-    `;(function () {`,
-    code,
-    ';',
-    `if (typeof mesh === 'undefined') throw new Error('You must define a "mesh" variable');`,
-    `return { mesh };`,
-    '})();'
-  ].join('\n'));
-}
+/**
+ * Build a Three.js mesh by interpreting the editor's restricted JavaScript.
+ *
+ * @param {string} code User-provided JavaScript statements.
+ * @param {Record<string, unknown>} _params Unused component parameters.
+ * @returns {{ mesh: THREE.Mesh }} A configured mesh.
+ */
+const evaluate = (code, _params) => {
+  const { mesh } = executeSafeJavaScript(code, { THREE: safeThree, Math: safeMath });
+  if (!(mesh instanceof THREE.Mesh)) {
+    throw new Error("You need to define a Three.js 'mesh'");
+  }
+  return { mesh };
+};
 
 const sketch = (props) => {
   const { params } = props.data || {};
-  const {} = params;
   const { context } = props;
 
   const renderer = new THREE.WebGLRenderer({ context });
@@ -37,14 +42,16 @@ const sketch = (props) => {
   camera.position.set(2, 2, 2);
   camera.lookAt(new THREE.Vector3());
 
-  const controls = new THREE.OrbitControls(camera, context.canvas);
+  const controls = new OrbitControls(camera, context.canvas);
   controls.enableZoom = false;
   controls.enablePan = false;
   controls.enableDamping = true;
   const scene = new THREE.Scene();
 
-  const light = new THREE.PointLight('white', 1, 20);
+  const light = new THREE.PointLight('white', 8, 20);
   light.position.set(2, 2, 2);
+  // Match the softer falloff used by the original workshop's Three.js version.
+  light.decay = 1;
   scene.add(light);
   
   const group = new THREE.Group();
@@ -70,7 +77,7 @@ const sketch = (props) => {
       camera.updateProjectionMatrix();
     },
     onCodeUpdate (props) {
-      const { evaluateResult, params } = props.data || {};
+      const { evaluateResult } = props.data || {};
 
       clearGroup();
       
@@ -92,21 +99,30 @@ const sketch = (props) => {
     }
   };
 }
+// ... (keep all your existing settings, evaluate, and sketch code above this point exactly the same)
 
-module.exports = (props) => {
-  const params = {
-    @UI.Slider({ visible: false, min: 0, max: 1, step: 0.01 })
-    perspective: 1,
-    @UI.Slider({ visible: false, min: -1, max: 1, step: 0.01 })
-    rotation: 0,
-  };
-  return <InteractiveComponent
-    sketch={sketch}
-    settings={settings}
-    code={props.code}
-    evaluate={evaluate}
-    params={params}
-    showCode
-    showCanvas
-  />;
+// 1. Define the parameters class configuration outside the component
+class ParamsConfig {
+  @UI.Slider({ visible: false, min: 0, max: 1, step: 0.01 })
+  perspective = 1;
+
+  @UI.Slider({ visible: false, min: -1, max: 1, step: 0.01 })
+  rotation = 0;
+}
+
+// 2. Instantiate and pass the parameters structure cleanly within the export
+export default (props) => {
+  const params = new ParamsConfig();
+
+  return (
+    <InteractiveComponent
+      sketch={sketch}
+      settings={settings}
+      code={props.code}
+      evaluate={evaluate}
+      params={params}
+      showCode
+      showCanvas
+    />
+  );
 };

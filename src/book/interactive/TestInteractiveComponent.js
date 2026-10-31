@@ -1,7 +1,7 @@
 /** @jsx h */
-const { h } = require('preact');
-const Coordinates2D = require('./Coordinates2D');
+import { h } from 'preact';
+import Coordinates2D from './Coordinates2D';
 
-module.exports = () => {
+export default () => {
   return <Coordinates2D />;
 };

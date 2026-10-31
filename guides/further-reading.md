@@ -1,53 +1,38 @@
-#### <sup>:closed_book: [workshop-webgl-glsl](../README.md) → Further Reading</sup>
+# Further reading
 
----
+Use these references to continue learning about shaders, graphics, and the
+tools used in this workshop.
 
-# Further Reading
+## GLSL and shader concepts
 
-More links to generative art & creative coding:
+- [The Book of Shaders](https://thebookofshaders.com/) is an interactive
+  introduction to fragment shaders and generative art.
+- [GLSL ES 3.00 specification][glsl-spec] documents the GLSL ES language.
+- [WebGL Fundamentals](https://webglfundamentals.org/) explains WebGL
+  concepts with practical examples.
+- [MDN WebGL API](https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API)
+  covers the browser WebGL API.
 
-- GLSL & Shaders
+## Three.js
 
-  - [The Book of Shaders](https://thebookofshaders.com/)
+- [Three.js manual](https://threejs.org/manual/) introduces common rendering
+  concepts and workflows.
+- [Three.js API documentation](https://threejs.org/docs/) documents classes
+  such as `ShaderMaterial`, `BufferGeometry`, and `WebGLRenderer`.
 
-  - [Lesson: GLSL Shader Basics](https://github.com/Jam3/jam3-lesson-webgl-shader-intro)
+## Project tools
 
-  - [Lesson: Custom Shaders in ThreeJS](https://github.com/Jam3/jam3-lesson-webgl-shader-threejs)
+- [Vite guide](https://vite.dev/guide/) explains the development server and
+  production builds used by this repository.
+- [canvas-sketch documentation][canvas-docs] covers the optional sketching
+  toolkit.
+- [glslify documentation](https://github.com/glslify/glslify) explains its
+  GLSL module system and preprocessing workflow.
+- [markdownlint rules][markdownlint-rules] describe the Markdown checks used
+  when editing these guides.
 
-- Math
-
-  - [Linear Interpolation](https://mattdesl.svbtle.com/linear-interpolation) — intro to `lerp`
-
-  - [math-as-code](https://github.com/Jam3/math-as-code) — A cheat sheet for mathematical notation in code form
-
-- Generative Art
-
-  - [Generative Artistry](https://generativeartistry.com/)
-
-  - [Anders Hoff](https://inconvergent.net/#writing) — Writing on Generative Art
-
-  - [Tyler Hobbs](http://www.tylerlhobbs.com/writings) — Writing on Generative Art
-
-  - [My Blog](https://mattdesl.svbtle.com/) — Writing on Creative Coding & Generative Art
-
-- More Resources
-
-  - [awesome-creative-coding](https://github.com/terkelg/awesome-creative-coding) — a large list of resources
-
-  - [graphics-resources](https://github.com/mattdesl/graphics-resources) — a large list of papers & study material
-
-- Tools
-
-  - [cubic-bezier.com](http://cubic-bezier.com) — A cubic Bezier curve editor, useful alongside the [bezier-easing](https://www.npmjs.com/package/bezier-easing) module
-
-  - [ThreeJS Editor](https://threejs.org/editor/) — An online scene editor for ThreeJS
-
-- Communities
-
-  - [creative-dev Slack team](https://creative-dev.herokuapp.com/)
-
-  - [#plottertwitter](https://twitter.com/hashtag/plottertwitter?lang=en), [#generative](https://twitter.com/hashtag/generative?lang=en), [#webgl](https://twitter.com/hashtag/webgl?lang=en) and similar hashtags on Twitter, Instagram etc.
-
-## 
-
-#### <sup>[← Back to README](../README.md)
+[glsl-spec]:
+  https://registry.khronos.org/OpenGL/index_es.php
+[canvas-docs]: https://github.com/mattdesl/canvas-sketch/tree/master/docs
+[markdownlint-rules]:
+  https://github.com/markdownlint/markdownlint/blob/main/docs/RULES.md

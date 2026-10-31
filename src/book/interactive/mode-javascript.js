@@ -1,6 +1,6 @@
 // CodeMirror, copyright (c) by Marijn Haverbeke and others
 // Distributed under an MIT license: https://codemirror.net/LICENSE
-const CodeMirror = require('codemirror');
+import CodeMirror from 'codemirror';
 
 CodeMirror.defineMode("javascript", function(config, parserConfig) {
   var indentUnit = config.indentUnit;
@@ -54,6 +54,7 @@ CodeMirror.defineMode("javascript", function(config, parserConfig) {
     type = tp; content = cont;
     return style;
   }
+  
   function tokenBase(stream, state) {
     var ch = stream.next();
     if (ch == '"' || ch == "'") {
@@ -123,6 +124,7 @@ CodeMirror.defineMode("javascript", function(config, parserConfig) {
       return ret("variable", "variable", word)
     }
   }
+
 
   function tokenString(quote) {
     return function(stream, state) {
@@ -233,7 +235,7 @@ CodeMirror.defineMode("javascript", function(config, parserConfig) {
     var cc = state.cc;
     // Communicate our context to the combinators.
     // (Less wasteful than consing up a hundred closures on every call.)
-    cx.state = state; cx.stream = stream; cx.marked = null, cx.cc = cc; cx.style = style;
+    cx.state = state; cx.stream = stream; cx.marked = null; cx.cc = cc; cx.style = style;
 
     if (!state.lexical.hasOwnProperty("align"))
       state.lexical.align = true;

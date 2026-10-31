@@ -1,47 +1,63 @@
-#### <sup>:closed_book: [workshop-webgl-glsl](../README.md) → Modules for Creative Coding</sup>
+# JavaScript and shader modules
 
----
+A module packages code or data so another part of a project can reuse it.
+JavaScript packages are commonly installed from npm. GLSL packages may need
+a shader preprocessor or build plugin before the browser can use them.
 
-# Modules for Creative Coding
+## Add a JavaScript package
 
-This workshop encourages students to make use of [npm](https://www.npmjs.com) modules to build complex and interesting artworks.
-
-If you find a module you want to use, like [riso-colors](https://www.npmjs.com/package/riso-colors), you can install it from your project folder like so:
+Run npm commands from your project folder. Add a package used by the app:
 
 ```sh
-npm install riso-colors
+npm install package-name
 ```
 
-Below are some of the modules used in the workshop:
+Add a package used only by development or the build:
 
-- [riso-colors](https://www.npmjs.com/package/riso-colors) - Risograph color palettes
-- [paper-colors](https://www.npmjs.com/package/paper-colors) - paper color palettes
-- [pack-spheres](https://www.npmjs.com/package/pack-spheres) - for sphere packing
+```sh
+npm install --save-dev package-name
+```
 
-Some other cool modules you might like:
+npm updates `package.json` and `package-lock.json`. Commit both files so the
+project's dependencies and exact versions stay reproducible. For a fresh
+checkout with a lockfile, run `npm ci`.
 
-- [three-tube-wireframe](https://www.npmjs.com/package/three-tube-wireframe) - build volumetric wireframes from a THREE.Geometry
-- [three-geometry-data](https://www.npmjs.com/package/three-geometry-data) - get nested vertex & normal data from a THREE.Geometry
-- [three-quaternion-from-normal](https://www.npmjs.com/package/three-quaternion-from-normal) - to orient a mesh toward a normal vector
-- [load-asset](https://www.npmjs.com/package/load-asset) - a utility to load images and other assets with async/await
-- [nice-color-palettes](https://www.npmjs.com/package/nice-color-palettes) - a collection of 1000 beautiful color palettes
-- [chromotome](https://www.npmjs.com/package/chromotome) - dozens of hand-picked color palettes
-- [poisson-disk-sampling](https://www.npmjs.com/package/poisson-disk-sampling) - can be used for 2D and 3D object placements
-- [convex-hull](https://www.npmjs.com/package/convex-hull) - 2D and 3D convex hull generation
-- [delaunay-triangulate](https://www.npmjs.com/package/delaunay-triangulate) - 2D and 3D triangulation
-- [voronoi-diagram](https://www.npmjs.com/package/voronoi-diagram) - for 2D and 3D voronoi diagrams
-- [svg-mesh-3d](https://github.com/mattdesl/svg-mesh-3d) - convert SVG path string to a 3D mesh
-- [eases](https://www.npmjs.com/package/eases) - a set of common easing functions
+## Use an installed package
 
-## GLSL modules
+This workshop already uses packages such as Three.js and gl-matrix. Import
+them from JavaScript modules:
 
-You can also use modules with GLSL and `glslify`.
+```js
+import * as THREE from 'three';
+import { mat4 } from 'gl-matrix';
 
-- [glsl-noise](https://www.npmjs.com/package/glsl-noise) - noise functions as a GLSL module
-- [glsl-voronoi-noise](https://www.npmjs.com/package/glsl-voronoi-noise) - Voronoi noise
-- [glsl-worley](https://www.npmjs.com/package/glsl-worley) - Worley noise 
-- [glsl-hsl2rgb](https://www.npmjs.com/package/glsl-hsl2rgb) - HSL to RGB function as a GLSL module
+const scene = new THREE.Scene();
+const transform = mat4.create();
+```
 
-## 
+Check `package.json` before installing a package; it may already be present.
+Use `npm ls package-name` to inspect the installed version.
 
-#### <sup>[← Back to README](../README.md)
+## Choose a package carefully
+
+Before adding a dependency, check:
+
+- Whether it supports the project's current JavaScript and Three.js versions.
+- Whether its API and documentation match the version you will install.
+- Whether it is actively maintained enough for your needs.
+- Its license and required peer dependencies.
+- Whether the same feature is already provided by the browser or Three.js.
+
+Use the package's official documentation for version-specific setup. Avoid
+copying old tutorials without checking their package versions and import
+syntax.
+
+## Shader modules
+
+A GLSL file is not a JavaScript package. It must be imported as shader text
+or processed by a tool that understands its syntax.
+
+This repository uses `vite-plugin-glsl` to load GLSL files and `#include`
+imports. glslify uses `#pragma glslify` directives and requires its own
+transform. See [GLSL syntax](glsl-syntax.md) and [glslify](glslify.md) for
+details.

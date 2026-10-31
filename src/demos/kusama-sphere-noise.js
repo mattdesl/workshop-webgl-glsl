@@ -1,40 +1,28 @@
-// Ensure ThreeJS is in global scope for the 'examples/'
-global.THREE = require("three");
-
-// Include any additional ThreeJS examples below
-require("three/examples/js/controls/OrbitControls");
-
-const canvasSketch = require("canvas-sketch");
-const glslify = require("glslify");
+import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import canvasSketch from "canvas-sketch";
 
 const settings = {
-  // Make the loop animated
   animate: true,
-  // Get a WebGL canvas rather than 2D
-  context: "webgl"
+  context: "webgl2",
 };
 
 const sketch = ({ context }) => {
-  // Create a renderer
   const renderer = new THREE.WebGLRenderer({
-    canvas: context.canvas
+    canvas: context.canvas,
   });
 
-  // WebGL background color
   renderer.setClearColor("#000", 1);
 
-  // Setup a camera
   const camera = new THREE.PerspectiveCamera(50, 1, 0.01, 100);
   camera.position.set(0, 0, -4);
   camera.lookAt(new THREE.Vector3());
 
-  // Setup camera controller
-  const controls = new THREE.OrbitControls(camera, context.canvas);
+  // Setup camera controller via native ESM imports
+  const controls = new OrbitControls(camera, context.canvas);
 
-  // Setup your scene
   const scene = new THREE.Scene();
 
-  // Setup a geometry
   const geometry = new THREE.SphereGeometry(1, 32, 32);
 
   // Setup a material
@@ -42,7 +30,7 @@ const sketch = ({ context }) => {
     uniforms: {
       time: { value: 0 },
       color: { value: new THREE.Color("pink") },
-      pointColor: { value: new THREE.Color("tomato") }
+      pointColor: { value: new THREE.Color("tomato") },
     },
     vertexShader: /*glsl*/ `
     varying vec3 vPosition;
@@ -53,7 +41,8 @@ const sketch = ({ context }) => {
       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     }
     `,
-    fragmentShader: glslify(/*glsl*/ `
+    // Removed glslify runtime wrapper. vite-plugin-glsl handles pragma macro resolution during bundling.
+    fragmentShader: /*glsl*/ `
     uniform vec3 color;
     uniform vec3 pointColor;
     uniform float time;
@@ -78,7 +67,7 @@ const sketch = ({ context }) => {
       
       gl_FragColor = vec4(fragColor, 1.0);
     }
-    `)
+    `,
   });
 
   // Setup a mesh with geometry + material
@@ -104,7 +93,7 @@ const sketch = ({ context }) => {
     unload() {
       controls.dispose();
       renderer.dispose();
-    }
+    },
   };
 };
 

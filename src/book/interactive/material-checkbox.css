@@ -16,7 +16,7 @@
   z-index: -1;
   position: absolute;
   left: -10px;
-  top: -8px;
+  top: 50%;
   display: block;
   margin: 0;
   border-radius: 50%;
@@ -26,7 +26,7 @@
   box-shadow: none;
   outline: none;
   opacity: 0;
-  transform: scale(1);
+  transform: translateY(-50%) scale(1);
   pointer-events: none;
   transition: opacity 0.3s, transform 0.2s;
 }
@@ -69,6 +69,10 @@
   transform: translate(3px, 4px) rotate(-45deg);
 }
 
+.MaterialCheckbox.no-checkmark > span::after {
+  display: none;
+}
+
 /* Checked, Indeterminate */
 .MaterialCheckbox > input:checked,
 .MaterialCheckbox > input:indeterminate {
@@ -107,7 +111,7 @@
 /* Active */
 .MaterialCheckbox > input:active {
   opacity: 1;
-  transform: scale(0);
+  transform: translateY(-50%) scale(0);
   transition: transform 0s, opacity 0s;
 }
 

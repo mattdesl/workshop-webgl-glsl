@@ -1,8 +1,10 @@
-# workshop-webgl-glsl
+# Upgraded version of `workshop-webgl-glsl`
 
-*A masterclass workshop about advanced graphics programming techniques with WebGL and GLSL*
+## This repo contains the source code for Matt DesLauriers's [Frontend Masters Advanced Creative Coding: WebGL and Shaders workshop](https://master.dev/courses/webgl-shaders/) but upgraded to WebGL2 and GLSL ES 3.00
 
-This repo contains the source code for my Frontend Masters *Advanced Creative Coding: WebGL and Shaders* workshop.
+## Original repo : [workshop-webgl-glsl](https://github.com/mattdesl/workshop-webgl-glsl)
+
+### Technical Constraint: Babel 8 requires Vite 8. However, Vite 8 is incompatible with vite-plugin-restart (v2), which only supports up to Vite 7. Therefore, I had to downgrade to Vite 7 and Babel 7
 
 ## Contents
 
@@ -18,9 +20,13 @@ This repo contains the source code for my Frontend Masters *Advanced Creative Co
 
   - [Intro to `glslify`](./guides/glslify.md)
 
-- 📖 Interactive Book
+- 📖 Interactive Book (original)
 
   - [WebGL & GLSL — A Primer](https://mattdesl.github.io/workshop-webgl-glsl/)
+
+- 📖 Interactive Book (upgraded)
+
+  - [WebGL2 & GLSL ES 3.00 — A Primer](https://crimson-aril.github.io/workshop-webgl2-glsl-es-3.00/)
 
 - 🔥 Demos
 
@@ -32,9 +38,9 @@ This repo contains the source code for my Frontend Masters *Advanced Creative Co
 
 - 🔧 Tools & Prerequisites
 
-  - `node@8.x` and `npm@5.x` or higher (see [here](./guides/node-and-npm.md) on how to install)
+  - `node@22.x` and `npm@11.x` or higher (see [please click here](./guides/node-and-npm.md) on how to install)
 
-  - `canvas-sketch-cli@1.11.4` or higher (see [here](./guides/canvas-sketch.md) on how to install)
+  - `canvas-sketch-cli@1.11.4` or higher (see [please click here](./guides/canvas-sketch.md) on how to install)
 
 - ⚡ Code Snippets
 
@@ -47,3 +53,18 @@ This repo contains the source code for my Frontend Masters *Advanced Creative Co
 - ✨ More Resources
 
   - [Further Reading](./guides/further-reading.md#running-locally)
+
+## Licensing
+
+This project is a combined and heavily modified work distributed under the terms of the GNU General Public License v3.0.
+
+### Original Work & Attribution
+
+This project includes code originally authored by **Matt DesLauriers (mattdesl)**, which is licensed under the MIT License:
+
+### Modifications & Derivative Code
+
+All subsequent modifications, additions, and derivative works made to this project are:
+**Copyright (c) 2026 Mohammed F. R. Noor (crimson-aril)**
+
+The entire combined work is distributed under the terms of the GNU General Public License v3.0. You can review the full license terms in the accompanying `LICENSE` file or at <https://gnu.org>.

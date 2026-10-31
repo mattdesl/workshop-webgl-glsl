@@ -1,71 +1,64 @@
-// Ensure ThreeJS is in global scope for the 'examples/'
-global.THREE = require("three");
+import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import Random from "canvas-sketch-util/random";
+import canvasSketch from "canvas-sketch";
+import packSpheres from "pack-spheres";
+import risoColorsData from "riso-colors";
 
-// Include any additional ThreeJS examples below
-require("three/examples/js/controls/OrbitControls");
-
-const Random = require("canvas-sketch-util/random");
-const canvasSketch = require("canvas-sketch");
-const packSpheres = require("pack-spheres");
-const risoColors = require("riso-colors").map(h => h.hex);
+const risoColors = risoColorsData.map((h) => h.hex);
 
 const settings = {
+  // Provide dimensions (e.g., standard high-res square) so the script can compile
   dimensions: [2048, 2048],
-  // Make the loop animated
-  // animate: true,
-  // Get a WebGL canvas rather than 2D
-  context: "webgl"
+  context: "webgl2",
 };
 
 const sketch = ({ context }) => {
-  // Create a renderer
   const renderer = new THREE.WebGLRenderer({
-    canvas: context.canvas
+    canvas: context.canvas,
   });
 
   const palette = Random.shuffle(risoColors).slice(0, 3);
   const backgroundHex = palette.shift();
   const background = new THREE.Color(backgroundHex);
 
-  // WebGL background color
   renderer.setClearColor(background, 1);
 
-  // Setup a camera
   const camera = new THREE.PerspectiveCamera(50, 1, 0.01, 100);
   camera.position.set(0, 0, -4);
   camera.lookAt(new THREE.Vector3());
 
-  // Setup camera controller
-  const controls = new THREE.OrbitControls(camera, context.canvas);
-
-  // Setup your scene
+  const controls = new OrbitControls(camera, context.canvas);
   const scene = new THREE.Scene();
 
-  // Setup a geometry
   const geometry = new THREE.SphereGeometry(1, 64, 32);
   const baseGeometry = new THREE.IcosahedronGeometry(1, 1);
 
-  // List of points we will pass to the shader
-  const points = baseGeometry.vertices;
+  const points = [];
+  const posAttr = baseGeometry.attributes.position;
+  for (let i = 0; i < posAttr.count; i++) {
+    points.push(
+      new THREE.Vector3(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i)),
+    );
+  }
 
   const spheres = packSpheres({
     maxCount: 10,
     maxRadius: 0.75,
-    minRadius: 0.05
+    minRadius: 0.05,
   });
 
-  const meshes = spheres.map(sphere => {
-    const [color0, color1] = Random.shuffle(palette);
+  spheres.map((sphere) => {
+    const [color0] = Random.shuffle(palette);
 
-    // Setup a material
     const material = new THREE.ShaderMaterial({
       defines: {
-        POINT_COUNT: points.length
+        POINT_COUNT: points.length,
       },
       uniforms: {
         color: { value: new THREE.Color(color0) },
         pointColor: { value: new THREE.Color("black") },
-        points: { value: points }
+        points: { value: points },
       },
       vertexShader: /*glsl*/ `
       varying vec3 vPosition;
@@ -80,13 +73,14 @@ const sketch = ({ context }) => {
       uniform vec3 pointColor;
       uniform vec3 points[POINT_COUNT];
 
-      // For the sphere rim
       uniform mat4 modelMatrix;
 
       float sphereRim (vec3 spherePosition) {
         vec3 normal = normalize(spherePosition.xyz);
         vec3 worldNormal = normalize(mat3(modelMatrix) * normal.xyz);
         vec3 worldPosition = (modelMatrix * vec4(spherePosition, 1.0)).xyz;
+        
+        // FIX 2: Explicitly calculate or normalize the view vector relative to cameraPosition
         vec3 V = normalize(cameraPosition - worldPosition);
         float rim = 1.0 - max(dot(V, worldNormal), 0.0);
         return pow(smoothstep(0.0, 1.0, rim), 0.5);
@@ -108,10 +102,9 @@ const sketch = ({ context }) => {
 
         gl_FragColor = vec4(fragColor, 1.0);
       }
-      `
+      `,
     });
 
-    // Setup a mesh with geometry + material
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.fromArray(sphere.position);
     mesh.scale.setScalar(sphere.radius);
@@ -120,25 +113,21 @@ const sketch = ({ context }) => {
     return mesh;
   });
 
-  // draw each frame
   return {
-    // Handle resize events here
     resize({ pixelRatio, viewportWidth, viewportHeight }) {
       renderer.setPixelRatio(pixelRatio);
       renderer.setSize(viewportWidth, viewportHeight, false);
       camera.aspect = viewportWidth / viewportHeight;
       camera.updateProjectionMatrix();
     },
-    // Update & render your scene here
     render({ time }) {
       controls.update();
       renderer.render(scene, camera);
     },
-    // Dispose of events & renderer for cleaner hot-reloading
     unload() {
       controls.dispose();
       renderer.dispose();
-    }
+    },
   };
 };
 

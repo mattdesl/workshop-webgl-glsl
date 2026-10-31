@@ -1,56 +1,61 @@
-// Ensure ThreeJS is in global scope for the 'examples/'
-global.THREE = require("three");
+import * as THREE from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import Random from "canvas-sketch-util/random";
+import canvasSketch from "canvas-sketch";
+import packSpheres from "pack-spheres";
+import risoColorsData from "riso-colors";
+import paperColorsData from "paper-colors";
 
-// Include any additional ThreeJS examples below
-require("three/examples/js/controls/OrbitControls");
-
-const Random = require("canvas-sketch-util/random");
-const canvasSketch = require("canvas-sketch");
-const packSpheres = require("pack-spheres");
-const risoColors = require("riso-colors").map(h => h.hex);
-const paperColors = require("paper-colors").map(h => h.hex);
-const glslify = require("glslify");
+const risoColors = risoColorsData.map((h) => h.hex);
+const paperColors = paperColorsData.map((h) => h.hex);
 
 const settings = {
-  // Make the loop animated
   animate: true,
   scaleToView: true,
-  dimensions: [1440, 900],
-  // Get a WebGL canvas rather than 2D
-  context: "webgl"
+  dimensions: [2048, 2048],
+  context: "webgl2",
 };
 
 const sketch = ({ context }) => {
-  // Create a renderer
   const renderer = new THREE.WebGLRenderer({
-    canvas: context.canvas
+    canvas: context.canvas,
   });
 
   const palette = Random.shuffle(risoColors).slice(0, 2);
   const backgroundHex = Random.pick(paperColors);
   const background = new THREE.Color(backgroundHex);
 
-  // WebGL background color
   renderer.setClearColor(background, 1);
 
-  // Setup a camera
   const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
   camera.position.set(2, 2, -4);
   camera.lookAt(new THREE.Vector3());
 
-  // Setup camera controller
-  const controls = new THREE.OrbitControls(camera, context.canvas);
+  // Setup camera controller from native JSM modules
+  const controls = new OrbitControls(camera, context.canvas);
 
-  // Setup your scene
   const scene = new THREE.Scene();
 
-  // Setup a geometry
-  const geometry = new THREE.IcosahedronBufferGeometry(1, 3);
+  // Setup modern geometries (Removing old Buffer name suffix)
+  const geometry = new THREE.IcosahedronGeometry(1, 3);
   const baseGeometry = new THREE.IcosahedronGeometry(1, 1);
+
+  // Extract vector coordinates safely from modern BufferGeometry attributes
+  const baseVertices = [];
+  const basePosAttr = baseGeometry.attributes.position;
+  for (let i = 0; i < basePosAttr.count; i++) {
+    baseVertices.push(
+      new THREE.Vector3(
+        basePosAttr.getX(i),
+        basePosAttr.getY(i),
+        basePosAttr.getZ(i),
+      ),
+    );
+  }
 
   // For each face, provide the 3 neighbouring points to that face
   const neighbourCount = 3;
-  addNeighbourAttributes(geometry, baseGeometry.vertices, neighbourCount);
+  addNeighbourAttributes(geometry, baseVertices, neighbourCount);
 
   const bounds = 1.5;
   const spheres = packSpheres({
@@ -66,22 +71,22 @@ const sketch = ({ context }) => {
     packAttempts: 4000,
     bounds,
     maxRadius: 1.5,
-    minRadius: 0.05
+    minRadius: 0.05,
   });
 
-  const meshes = spheres.map(sphere => {
+  const meshes = spheres.map((sphere) => {
     const color0 = Random.pick(palette);
 
     // Setup a material
     const material = new THREE.ShaderMaterial({
       extensions: {
-        derivatives: true
+        derivatives: true,
       },
       uniforms: {
         background: { value: new THREE.Color(background) },
         color: { value: new THREE.Color(color0) },
         pointColor: { value: new THREE.Color("black") },
-        time: { value: 0 }
+        time: { value: 0 },
       },
       vertexShader: /*glsl*/ `
       varying vec3 vPosition;
@@ -102,7 +107,8 @@ const sketch = ({ context }) => {
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }
       `,
-      fragmentShader: glslify(/* glsl */ `
+      // Removed runtime glslify wrapper; compiler plugin processes pragma assets directly
+      fragmentShader: /* glsl */ `
       varying vec3 vPosition;
       uniform vec3 color;
       uniform vec3 pointColor;
@@ -152,7 +158,7 @@ const sketch = ({ context }) => {
 
         gl_FragColor = vec4(fragColor, 1.0);
       }
-      `)
+      `,
     });
 
     // Setup a mesh with geometry + material
@@ -176,10 +182,10 @@ const sketch = ({ context }) => {
     },
     // Update & render your scene here
     render({ time, deltaTime }) {
-      meshes.forEach(mesh => {
+      meshes.forEach((mesh) => {
         mesh.rotateOnWorldAxis(
           new THREE.Vector3(0, 1, 0),
-          deltaTime * mesh.rotationSpeed
+          deltaTime * mesh.rotationSpeed,
         );
         mesh.material.uniforms.time.value = time;
       });
@@ -191,7 +197,7 @@ const sketch = ({ context }) => {
     unload() {
       controls.dispose();
       renderer.dispose();
-    }
+    },
   };
 };
 
@@ -200,15 +206,14 @@ canvasSketch(sketch, settings);
 function addNeighbourAttributes(
   bufferGeometry,
   baseVertices,
-  neighbourCount = 3
+  neighbourCount = 3,
 ) {
   if (bufferGeometry.getIndex()) {
     throw new Error(
-      "This is only supported on un-indexed geometries right now."
+      "This is only supported on un-indexed geometries right now.",
     );
   }
 
-  // We will give each triangle in the geometry N nearest neighbours
   const positionAttr = bufferGeometry.getAttribute("position");
   const vertexCount = positionAttr.count;
 
@@ -217,13 +222,12 @@ function addNeighbourAttributes(
   for (let i = 0; i < neighbourCount; i++) {
     neighbourAttribs.push({
       name: `neighbour${i}`,
-      data: []
+      data: [],
     });
   }
 
   // For each triangle
   for (let i = 0; i < vertexCount / 3; i++) {
-    // Get the triangle centroid, we will use that for comparison
     const centroid = new THREE.Vector3();
     for (let c = 0; c < 3; c++) {
       const x = positionAttr.getX(i * 3 + c);
@@ -238,44 +242,28 @@ function addNeighbourAttributes(
     const neighbours = getNearestNeighbours(
       centroid,
       baseVertices,
-      neighbourCount
+      neighbourCount,
     );
 
-    // Go through each neighbour and add its XYZ data in
     neighbours.forEach((n, i) => {
-      // Repeat this 3 times so that we do it for each vertex
-      // in the triangle
       for (let c = 0; c < 3; c++) {
         neighbourAttribs[i].data.push(...n.toArray());
       }
     });
   }
 
-  // Now that we have flat arrays for each neighbour,
-  // we add it into the buffer geometry
-  neighbourAttribs.forEach(attrib => {
+  // CRITICAL FIX: Changed deprecated .addAttribute to modern .setAttribute
+  neighbourAttribs.forEach((attrib) => {
     const array = new Float32Array(attrib.data);
     const buf = new THREE.BufferAttribute(array, 3);
-    bufferGeometry.addAttribute(attrib.name, buf);
+    bufferGeometry.setAttribute(attrib.name, buf);
   });
 }
 
-// a simple but inefficient method to extract N
-// nearest neighbours from a point with a given vertex list
 function getNearestNeighbours(point, list, count) {
-  // get distance squared from this point to all others
-  const data = list
-    // Avoid any that match the input point
-    .filter(p => p.point !== point)
-    // Get an object with distance
-    .map(other => {
-      return {
-        distance: point.distanceToSquared(other),
-        point: other
-      };
-    });
-  // sort by distance
-  data.sort((a, b) => a.distance - b.distance);
-  // return only N neighbours
-  return data.slice(0, count).map(p => p.point);
+  return list
+    .map((v) => ({ vertex: v, distSq: point.distanceToSquared(v) }))
+    .sort((a, b) => a.distSq - b.distSq)
+    .slice(0, count)
+    .map((item) => item.vertex);
 }
